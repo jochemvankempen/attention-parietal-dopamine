@@ -98,6 +98,6 @@ for itw = 1:length(timewin_fields)
     p_anova = array2table(P, 'VariableNames', statstable{iunit}(2:(end-2),1));
         
     savefilename = fullfile(path_target, sprintf('rate_ANOVA_%s.mat', timewin_fields{itw}));
-    save(savefilename, 'P', 'statstable', 'stats', 'terms');
+    save(savefilename, 'P', 'statstable', 'stats', 'terms', 'time_windows');
     
 end

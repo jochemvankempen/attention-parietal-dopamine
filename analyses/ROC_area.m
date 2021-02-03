@@ -12,12 +12,16 @@ function [ area, hit, fa ] = ROC_area(data, class)
 % 
 % Returns
 % -------
-% area : array of bool
-%     booleans indicating trial inclusion
+% area : float
+%     float indicating area under ROC
+% hit : array of float
+%     number of hits at each threshold
+% fa : array of float
+%     number of false alarms at each threshold
 % 
 
 % perform checks
-assert(length(data)~=length(class), 'Data and their class labels should have the same length');
+assert(length(data)==length(class), 'Data and their class labels should have the same length');
 assert(all((class==0 | class==1)), 'Class labels should be either 0 or 1');
 
 n = length(data);
@@ -38,6 +42,3 @@ end
 
 deltaFA = fa(2:end)-fa(1:end-1);
 area = deltaFA'*hit(2:end);
-
-end
-
