@@ -20,7 +20,8 @@ assert(height(recinfo)==1, 'height recInfo ~= 1')
 
 %% param
 
-% define analysis timewindows for statistical analyses
+% define timewindows for further analyses. All the below analyses will be
+% run across each of these time windows.
 time_windows.baseline = {'Stim', [-200 0]};
 time_windows.stim = {'Stim', [0 400]};
 time_windows.cue = {'Cue', [0 400]};
@@ -64,19 +65,5 @@ end
 if Job.spike_rate_ROC
     spike_rate_ROC(recinfo, trialdata, unit, time_windows, path_target)
 end
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 

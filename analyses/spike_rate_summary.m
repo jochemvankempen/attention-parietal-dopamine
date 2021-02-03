@@ -71,7 +71,7 @@ for itw = 1:length(timewin_fields)
         clear tmp*
     end
         
-    savefilename = fullfile(path_target, sprintf('rate_ROC_%s.mat', timewin_fields{itw}));
+    savefilename = fullfile(path_target, sprintf('rate_summary_%s.mat', timewin_fields{itw}));
     save(savefilename, 'rate_*', 'FF_*', 'time_windows');
     
 end
