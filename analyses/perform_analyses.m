@@ -1,5 +1,22 @@
 function perform_analyses(recinfo, Job, path_data)
+% perform_analyses(recinfo, Job, path_data)
+%
+% Wrapper function from which analyses/Jobs are called
+%
+% Parameters
+% ----------
+% recinfo : table
+%     table with single row (one recording)
+% Job : struct
+%     structure with fields refering to individual analyses. Each field
+%     is a boolean indicating whether the analysis will be executed
+% path_data : string
+%     string with the location of the datafiles
+%
 
+%% check input
+
+assert(height(recinfo)==1, 'height recInfo ~= 1')
 
 %% param
 
@@ -30,40 +47,23 @@ end
 trialdata([trialdata.exclude_trial]) = [];
 
 
+%% mean rate & FF
+
+if Job.spike_rate_summary
+    spike_rate_summary(recinfo, trialdata, unit, time_windows, path_target)
+end
+
 %% perform anova across spike rates 
 
 if Job.spike_rate_ANOVA
     spike_rate_ANOVA(recinfo, trialdata, unit, time_windows, path_target)
 end
 
-%% test attentional ROC 
+%% attention/drug ROC 
 
 if Job.spike_rate_ROC
     spike_rate_ROC(recinfo, trialdata, unit, time_windows, path_target)
 end
-
-%% Attentional/drug modulation - ROC
-
-% define which conditions to compare
-cond_compare = [...
-    1 2;
-    1 3;
-    2 3;
-    4 5;
-    4 6;
-    5 6;];
-
-
-conditions = unique([trialdata.cond_num]);
-
-nchoosek(conditions, 2)
-
-ROC_area
-
-
-keyboard
-
-
 
 
 

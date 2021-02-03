@@ -28,8 +28,9 @@ end
 
 %% define jobs
 
-Job.spike_rate_ANOVA = 1;
-Job.spike_rate_ANOVA = 1;
+Job.spike_rate_summary  = 1;
+Job.spike_rate_ANOVA    = 1;
+Job.spike_rate_ROC      = 1;
 
 %% Run jobs
 

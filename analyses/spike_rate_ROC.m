@@ -30,44 +30,32 @@ rate = spike_rate(unit, time_windows);
 timewin_fields = fields(rate);
 
 % define path to store result
-path_target = fullfile(path_target, 'spike_rate_ANOVA', recinfo.Subject, recinfo.Date);
+path_target = fullfile(path_target, 'spike_rate_ROC', recinfo.Subject, recinfo.Date);
 if ~isfolder(path_target)
     mkdir(path_target)
+end
+
+% set task specific param
+switch recinfo.Task
+    case 'gratc'
+        cond_compare = [...
+            1 2;
+            1 3;
+            2 3;
+            4 5;
+            4 6;
+            5 6;];
+               
+    case 'msacc'
+        error('not implemented yet')
 end
 
 % loop over time windows
 for itw = 1:length(timewin_fields)
     
-    % define parameters for ANOVA
-    switch recinfo.Task
-        case 'gratc'
-            attention_text = {'attend RF','attend away'};
-            direction_text = {'dir 1','dir 2'};
-            drug_text = {'no drug','drug'};
-            
-            attention = [1 2 2 1 2 2];
-            direction = [1 2 1 2 1 2];
-            
-            group_names{1,1} = 'att';
-            group_names{2,1} = 'dru';
-            group_names{3,1} = 'dir';
-            
-            P = zeros(num_unit, 7);
-            
-        case 'msacc'
-            condition_text = {'1','2','3','4'};
-            drug_text = {'no drug','drug'};
-            
-            group_names{1,1} = 'cond';
-            group_names{2,1} = 'dru';
-            
-            P = zeros(num_unit, 3);
-    end
-    
-    statstable = cell(num_unit,1);
-    stats = cell(num_unit,1);
-    terms = cell(num_unit,1);
-    
+    [roc_attend, mi_attend] = deal(NaN(num_unit, 2, size(cond_compare,1))); % unit, drug, cond
+    [roc_drug, mi_drug] = deal(NaN(num_unit, size(cond_compare,1))); % unit, cond
+
     for iunit = 1:num_unit
         
         % select only trial window for which this unit has spikes
@@ -75,29 +63,63 @@ for itw = 1:length(timewin_fields)
         tmp_rate = rate.(timewin_fields{itw})(iunit,trial_index)';
         tmp_trialdata =  trialdata(trial_index);
         
-        % define groups for anova
-        switch recinfo.Task
-            case 'gratc'
-                factor.attention = attention([tmp_trialdata.cond_num])';
-                factor.drug = [tmp_trialdata.drug]' + 1;
-                factor.direction = direction([tmp_trialdata.cond_num])';
+        idx_cond = [tmp_trialdata.cond_num]';
+        idx_drug = [tmp_trialdata.drug]' + 1;
+
+        % attention ROC
+        for idrug = 1:2
+            for icond = 1:length(cond_compare)
                 
-                groups = {attention_text(factor.attention)', drug_text(factor.drug)', direction_text(factor.direction)'};
+                % get trial indices
+                trial_index = (...
+                    idx_drug==idrug) ...
+                    & (idx_cond==cond_compare(icond,1) | idx_cond==cond_compare(icond,2));
                 
-            case 'msacc'
-                factor.condition = [tmp_trialdata.cond_num]';
-                factor.drug = [tmp_trialdata.drug]' + 1;
+                % define trial classes
+                class = NaN(length(trial_index),1);
+                class(idx_cond==cond_compare(icond,1)) = 1;
+                class(idx_cond==cond_compare(icond,2)) = 0;
                 
-                groups = {condition_text(factor.condition)', drug_text(factor.drug)'};
+                % ROC analysis
+                [roc_attend(iunit,idrug,icond),~,~] = ROC_area(tmp_rate(trial_index), class(trial_index));
+        
+                % attMI = (attRF - attAway) / (attRF + attAway)
+                tmp = ...
+                    ( mean(tmp_rate(trial_index & class==1)) - mean(tmp_rate(trial_index & class==0)) ) / ...
+                    ( mean(tmp_rate(trial_index & class==1)) + mean(tmp_rate(trial_index & class==0)) );
+                mi_attend(iunit,idrug,icond) = tmp;
+                
+            end
         end
         
-        % ANOVA
-        [P(iunit,:),statstable{iunit},stats{iunit},terms{iunit}]  = anovan(tmp_rate,groups,'full',3,group_names,'off');
         
+        % drug ROC
+        for icond = 1:length(cond_compare)
+            
+            % get trial indices
+            trial_index = (idx_cond==icond);
+            
+            % define trial classes
+            class = NaN(length(trial_index),1);
+            class(idx_drug==1) = 0;
+            class(idx_drug==2) = 1;
+
+            % ROC analysis
+            [roc_drug(iunit,icond),~,~] = ROC_area(tmp_rate(trial_index), class(trial_index));
+
+            % drugMI = (drug - no drug) / (drug + no drug)
+            tmp = ...
+                ( mean(tmp_rate(trial_index & class==1)) - mean(tmp_rate(trial_index & class==0)) ) / ...
+                ( mean(tmp_rate(trial_index & class==1)) + mean(tmp_rate(trial_index & class==0)) );
+            
+            mi_drug(iunit,icond) = tmp;
+            
+        end
+        
+        clear tmp*
     end
-    p_anova = array2table(P, 'VariableNames', statstable{iunit}(2:(end-2),1));
         
-    savefilename = fullfile(path_target, sprintf('rate_ANOVA_%s.mat', timewin_fields{itw}));
-    save(savefilename, 'P', 'statstable', 'stats', 'terms');
+    savefilename = fullfile(path_target, sprintf('rate_ROC_%s.mat', timewin_fields{itw}));
+    save(savefilename, 'roc_*', 'mi_*', 'time_windows');
     
 end
