@@ -1,4 +1,4 @@
-function spike_rate_summary(recinfo, trialdata, unit, time_windows, path_target)
+function spike_rate_summary(recinfo, trialdata, unit, time_windows, PSTH_windows, path_target)
 % spike_rate_summary(recinfo, spike_rate, path_target)
 %
 % Computes average rate and fano factor for each condition over each field in time_windows
@@ -13,6 +13,8 @@ function spike_rate_summary(recinfo, trialdata, unit, time_windows, path_target)
 %     struct with spike times aligned to events
 % time_windows : struct
 %     struct with time windows  to evaluate
+% PSTH_windows : struct
+%     struct with time windows for which to extract PSTH
 % path_target : string
 %     path where to store results
 % 
@@ -29,6 +31,7 @@ rate = spike_rate(unit, time_windows);
 
 % get alignments
 timewin_fields = fields(rate);
+PSTH_fields = fields(PSTH_windows);
 
 % define path to store result
 path_target = fullfile(path_target, 'spike_rate_summary', recinfo.Subject, recinfo.Date);
@@ -36,13 +39,70 @@ if ~isfolder(path_target)
     mkdir(path_target)
 end
 
-% loop over time windows
-for itw = 1:length(timewin_fields)
-    
-    [rate_cond, FF_cond] = deal(NaN(num_unit, 2, length(conditions)));% unit, drug, cond
+% compute histogram
+binsize = 30;
+maxhist = zeros(num_unit,1); % normalisation factor
+for itw = 1:length(PSTH_fields)
+        
+    PSTH_event = PSTH_windows.(PSTH_fields{itw}){1};
+    time_window = PSTH_windows.(PSTH_fields{itw}){2};
     
     for iunit = 1:num_unit
         
+        % select only trial window for which this unit has spikes
+        trial_index = get_unit_trial_index(unit, iunit);
+        tmp_trialdata =  trialdata(trial_index);
+
+        % compute histogram
+        [hist_spike, hist_time] = spike_convolute_gaussian(unit.([PSTH_event 'Align'])(:,trial_index), time_window, iunit, binsize);
+        
+        % init store
+        if iunit==1
+            PSTH.(PSTH_fields{itw}).samples = NaN(num_unit, 2, length(conditions), length(hist_time)); % unit, drug, conditions, time
+            PSTH.(PSTH_fields{itw}).time = hist_time;
+        end
+        
+        % rate across condition
+        idx_cond = [tmp_trialdata.cond_num]';
+        idx_drug = [tmp_trialdata.drug]' + 1;
+        
+        for idrug = 1:2
+            for icond = 1:length(conditions)
+                
+                % get trial indices
+                trial_index = (...
+                    idx_drug==idrug) ...
+                    & idx_cond==icond;
+                
+                % store
+                PSTH.(PSTH_fields{itw}).samples(iunit,idrug,icond,:) = mean(hist_spike(trial_index,:),1);
+                
+                if maxhist(iunit)<max(PSTH.(PSTH_fields{itw}).samples(iunit,idrug,icond,:))
+                    maxhist(iunit) = max(PSTH.(PSTH_fields{itw}).samples(iunit,idrug,icond,:));
+                end
+            end
+        end
+    end
+end
+
+% normalisation
+for itw = 1:length(PSTH_fields)
+    for iunit = 1:num_unit
+        PSTH.(PSTH_fields{itw}).samples(iunit,:,:,:) = PSTH.(PSTH_fields{itw}).samples(iunit,:,:,:) / maxhist(iunit) * 100; 
+    end
+end
+savefilename = fullfile(path_target, sprintf('rate_PSTH.mat'));
+save(savefilename, 'PSTH', 'PSTH_windows', 'maxhist');
+
+
+% loop over time windows
+for itw = 1:length(timewin_fields)   
+    
+    % init
+    [rate_cond, FF_cond] = deal(NaN(num_unit, 2, length(conditions)));% unit, drug, cond
+    
+    for iunit = 1:num_unit
+                
         % select only trial window for which this unit has spikes
         trial_index = get_unit_trial_index(unit, iunit);
         tmp_rate = rate.(timewin_fields{itw})(iunit,trial_index)';

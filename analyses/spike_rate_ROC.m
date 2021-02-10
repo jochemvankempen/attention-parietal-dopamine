@@ -94,7 +94,7 @@ for itw = 1:length(timewin_fields)
         
         
         % drug ROC
-        for icond = 1:length(cond_compare)
+        for icond = 1:length(unique(idx_cond))
             
             % get trial indices
             trial_index = (idx_cond==icond);

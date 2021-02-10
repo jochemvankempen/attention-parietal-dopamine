@@ -24,8 +24,8 @@ for itime = 1:length(time_fields)
     event = time_windows.(time_fields{itime}){1};
     time_window = time_windows.(time_fields{itime}){2};
     
-    tmp_count = cellfun(@(x) length(x>time_window(1) & x<=time_window(2)), unit.([event 'Align']), 'UniformOutput',true);
-    tmp_rate = tmp_count * diff(time_window)/1000;
+    tmp_count = cellfun(@(x) length(find(x>time_window(1) & x<time_window(2))), unit.([event 'Align']), 'UniformOutput',true);
+    tmp_rate = tmp_count / (diff(time_window)/1000);
     
     spike_rate.(time_fields{itime}) = tmp_rate;
 end

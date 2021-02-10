@@ -28,6 +28,19 @@ time_windows.cue = {'Cue', [0 400]};
 time_windows.pre_cue = {'Cue', [-200 0]};
 time_windows.dim = {'Dim1', [-500 0]};
 
+PSTH_windows.stim = {'Stim', [-250 1000]};
+PSTH_windows.cue = {'Cue', [-250 1000]};
+PSTH_windows.dim = {'Dim1', [-1000 250]};
+
+pupil_windows.baseline = {'STIM_ON', [-300 -50]/1000};
+pupil_windows.stim = {'STIM_ON', (500 + [-125 125])/1000};
+pupil_windows.cue = {'CUE_ON', (500 + [-125 125])/1000};
+pupil_windows.dim = {'DIMMING1', [-300 -50]/1000};
+
+pupil_timeseries.stim = {'STIM_ON', -0.5, 501}; % event, timestamp, num_timestamps
+pupil_timeseries.cue = {'CUE_ON', -0.5, 501};
+pupil_timeseries.dim = {'DIMMING1', -1.0, 301};
+
 %% load data
 
 loadfilename = fullfile(path_data, recinfo.Subject, recinfo.Date, 'unit.mat');
@@ -39,19 +52,12 @@ path_target = regexprep(path_data, 'processed', 'analysed'); % path where result
 
 %% remove trials 
 
-event_fields = fields(unit);
-event_fields = event_fields(contains(event_fields, 'Align'));
-
-for ievent = 1:length(event_fields)
-    unit.(event_fields{ievent})(:,[trialdata.exclude_trial]) = [];
-end
-trialdata([trialdata.exclude_trial]) = [];
-
+[trialdata, unit] = remove_excluded_trials(trialdata, unit);
 
 %% mean rate & FF
 
 if Job.spike_rate_summary
-    spike_rate_summary(recinfo, trialdata, unit, time_windows, path_target)
+    spike_rate_summary(recinfo, trialdata, unit, time_windows, PSTH_windows, path_target)
 end
 
 %% perform anova across spike rates 
@@ -66,4 +72,15 @@ if Job.spike_rate_ROC
     spike_rate_ROC(recinfo, trialdata, unit, time_windows, path_target)
 end
 
+%% pupil
+
+if Job.pupil_drug_modulation
+    pupil_drug_modulation(recinfo, trialdata, pupil_windows, pupil_timeseries, path_target)
+end
+
+%% RT
+
+if Job.RT_drug_modulation
+    RT_drug_modulation(recinfo, trialdata, path_target)
+end
 

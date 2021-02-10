@@ -36,6 +36,7 @@ if ~isfolder(path_target)
 end
 
 % loop over time windows
+p_stim = NaN(num_unit,1);
 for itw = 1:length(timewin_fields)
     
     % define parameters for ANOVA
@@ -67,7 +68,6 @@ for itw = 1:length(timewin_fields)
     statstable = cell(num_unit,1);
     stats = cell(num_unit,1);
     terms = cell(num_unit,1);
-    
     for iunit = 1:num_unit
         
         % select only trial window for which this unit has spikes
@@ -94,10 +94,23 @@ for itw = 1:length(timewin_fields)
         % ANOVA
         [P(iunit,:),statstable{iunit},stats{iunit},terms{iunit}]  = anovan(tmp_rate,groups,'full',3,group_names,'off');
         
+        % check for significant stimulus response
+        switch timewin_fields{itw}
+            case 'stim'
+                
+                idx_baseline = strcmpi(timewin_fields, 'baseline');
+                
+                rate_baseline = rate.(timewin_fields{idx_baseline})(iunit,trial_index)';
+                rate_stim = rate.(timewin_fields{itw})(iunit,trial_index)';
+                
+                [p_stim(iunit), H, STATS] = signrank(rate_stim-rate_baseline);
+                                
+        end
+        
     end
     p_anova = array2table(P, 'VariableNames', statstable{iunit}(2:(end-2),1));
         
     savefilename = fullfile(path_target, sprintf('rate_ANOVA_%s.mat', timewin_fields{itw}));
-    save(savefilename, 'p_anova', 'statstable', 'stats', 'terms', 'time_windows');
+    save(savefilename, 'p_*', 'statstable', 'stats', 'terms', 'time_windows');
     
 end

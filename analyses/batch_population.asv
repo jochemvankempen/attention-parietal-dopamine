@@ -485,8 +485,8 @@ plotj_saveFig(savefigname, {'png', 'svg'})
 %% Attend ROC, drug/no drug, narrow/broad. DrugMI-ejecCurrent
 
 % selectivity_criterium = 'none';
-selectivity_criterium = 'att&dru';
-% selectivity_criterium = 'dru';
+% selectivity_criterium = 'att&dru';
+selectivity_criterium = 'dru';
 % selectivity_criterium = 'dru';
 
 
