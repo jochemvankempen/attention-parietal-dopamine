@@ -24,10 +24,11 @@ assert(height(recinfo)==1, 'height recInfo ~= 1')
 [num_unit, num_trials] = size(unit.StimAlign);
 
 % compute firing rate
-rate = spike_rate(unit, time_windows);
+count = spike_rate(unit, time_windows, 'count');
+rate = spike_rate(unit, time_windows, 'rate');
 
 % get alignments
-timewin_fields = fields(rate);
+timewin_fields = fields(count);
 
 % define path to store result
 path_target = fullfile(path_target, 'spike_rate_ANOVA', recinfo.Subject, recinfo.Date);
@@ -47,7 +48,7 @@ for itw = 1:length(timewin_fields)
             drug_text = {'no drug','drug'};
             
             attention = [1 2 2 1 2 2];
-            direction = [1 2 1 2 1 2];
+            direction = [1 1 1 2 2 2];
             
             group_names{1,1} = 'att';
             group_names{2,1} = 'dru';
@@ -71,9 +72,8 @@ for itw = 1:length(timewin_fields)
     for iunit = 1:num_unit
         
         % select only trial window for which this unit has spikes
-        trial_index = get_unit_trial_index(unit, iunit);
-        tmp_rate = rate.(timewin_fields{itw})(iunit,trial_index)';
-        tmp_trialdata =  trialdata(trial_index);
+        [tmp_trialdata, tmp_unit, idx_exclude_trials] = remove_excluded_trials(trialdata, unit, iunit);
+        tmp_count = count.(timewin_fields{itw})(iunit,~idx_exclude_trials)';
         
         % define groups for anova
         switch recinfo.Task
@@ -92,7 +92,7 @@ for itw = 1:length(timewin_fields)
         end
         
         % ANOVA
-        [P(iunit,:),statstable{iunit},stats{iunit},terms{iunit}]  = anovan(tmp_rate,groups,'full',3,group_names,'off');
+        [P(iunit,:),statstable{iunit},stats{iunit},terms{iunit}]  = anovan(tmp_count,groups,'full',3,group_names,'off');
         
         % check for significant stimulus response
         switch timewin_fields{itw}
@@ -100,11 +100,14 @@ for itw = 1:length(timewin_fields)
                 
                 idx_baseline = strcmpi(timewin_fields, 'baseline');
                 
-                rate_baseline = rate.(timewin_fields{idx_baseline})(iunit,trial_index)';
-                rate_stim = rate.(timewin_fields{itw})(iunit,trial_index)';
+                rate_baseline = rate.(timewin_fields{idx_baseline})(iunit,~idx_exclude_trials)';
+                rate_stim = rate.(timewin_fields{itw})(iunit,~idx_exclude_trials)';
                 
                 [p_stim(iunit), H, STATS] = signrank(rate_stim-rate_baseline);
-                                
+                      
+%                 3.3030
+%     4.7497
+
         end
         
     end
@@ -114,3 +117,14 @@ for itw = 1:length(timewin_fields)
     save(savefilename, 'p_*', 'statstable', 'stats', 'terms', 'time_windows');
     
 end
+
+% % 
+% P =
+% 
+%     0.0024
+%     0.5727
+%     0.8328
+%     0.5523
+%     0.5252
+%     0.3083
+%     0.6414

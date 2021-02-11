@@ -24,7 +24,7 @@ assert(height(recinfo)==1, 'height recInfo ~= 1')
 [num_unit, num_trials] = size(unit.StimAlign);
 
 % compute firing rate
-rate = spike_rate(unit, time_windows);
+rate = spike_rate(unit, time_windows, 'rate');
 
 % get alignments
 timewin_fields = fields(rate);
@@ -41,10 +41,10 @@ switch recinfo.Task
         cond_compare = [...
             1 2;
             1 3;
-            2 3;
+            3 2;
             4 5;
             4 6;
-            5 6;];
+            6 5;];
                
     case 'msacc'
         error('not implemented yet')
@@ -59,9 +59,8 @@ for itw = 1:length(timewin_fields)
     for iunit = 1:num_unit
         
         % select only trial window for which this unit has spikes
-        trial_index = get_unit_trial_index(unit, iunit);
-        tmp_rate = rate.(timewin_fields{itw})(iunit,trial_index)';
-        tmp_trialdata =  trialdata(trial_index);
+        [tmp_trialdata, tmp_unit, idx_exclude_trials] = remove_excluded_trials(trialdata, unit, iunit);
+        tmp_rate = rate.(timewin_fields{itw})(iunit,~idx_exclude_trials)';
         
         idx_cond = [tmp_trialdata.cond_num]';
         idx_drug = [tmp_trialdata.drug]' + 1;

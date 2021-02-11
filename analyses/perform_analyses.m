@@ -22,10 +22,10 @@ assert(height(recinfo)==1, 'height recInfo ~= 1')
 
 % define timewindows for further analyses. All the below analyses will be
 % run across each of these time windows.
-time_windows.baseline = {'Stim', [-200 0]};
+time_windows.baseline = {'Stim', [-400 0]};
 time_windows.stim = {'Stim', [0 400]};
 time_windows.cue = {'Cue', [0 400]};
-time_windows.pre_cue = {'Cue', [-200 0]};
+time_windows.pre_cue = {'Cue', [-400 0]};
 time_windows.dim = {'Dim1', [-500 0]};
 
 PSTH_windows.stim = {'Stim', [-250 1000]};
@@ -49,10 +49,6 @@ loadfilename = fullfile(path_data, recinfo.Subject, recinfo.Date, 'trialdata.mat
 load(loadfilename);
 
 path_target = regexprep(path_data, 'processed', 'analysed'); % path where results are stored
-
-%% remove trials 
-
-[trialdata, unit] = remove_excluded_trials(trialdata, unit);
 
 %% mean rate & FF
 

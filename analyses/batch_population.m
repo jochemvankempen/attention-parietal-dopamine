@@ -3,7 +3,8 @@ function batch_population()
 clear all
 %% param
 subjects = {'J','W'};
-path_data = ['/Users/jochemvankempen/NCL/gratc_DA/processed'];
+path_data = ['C:\Jochem\Gratc_PPC_DA_new\data\processed'];
+% path_data = ['/Users/jochemvankempen/NCL/gratc_DA/processed'];
 path_population = regexprep(path_data,'processed','population');
 
 if ~isfolder(path_population)
@@ -34,7 +35,7 @@ waveform = get_population_data(recordinglist, 'waveform', path_data);
 % pupil_windows = get_population_data(recordinglist, 'pupil_windows', path_data, 'stim');
 % pupil_timeseries = get_population_data(recordinglist, 'pupil_timeseries', path_data, 'stim');
 
-RT = get_population_data(recordinglist, 'RT_drug_modulation', path_data, 'stim');
+% RT = get_population_data(recordinglist, 'RT_drug_modulation', path_data, 'stim');
 
 %% Extract param
 
@@ -251,12 +252,10 @@ loadfilename = fullfile(path_data, unitlist.Subject(idx_unit,:), unitlist.Date(i
 unit = load(loadfilename);
 loadfilename = fullfile(path_data, unitlist.Subject(idx_unit,:), unitlist.Date(idx_unit,:), 'trialdata.mat');
 load(loadfilename);
-[trialdata, unit] = remove_excluded_trials(trialdata, unit);
+[trialdata, unit] = remove_excluded_trials(trialdata, unit, unit2plot);
 
 % select only trial window for which this unit has spikes
-trial_index = get_unit_trial_index(unit, unit2plot);
-trialdata =  trialdata(trial_index);
-sps = unit.Dim1Align(:,trial_index);
+sps = unit.Dim1Align;
 
 % raster for each condition
 idx_attend = idx_attention([trialdata.cond_num])';
@@ -357,6 +356,7 @@ plotj_saveFig(savefigname, {'png', 'svg'})
 
 % selectivity_criterium = 'none';
 selectivity_criterium = 'dru';
+% selectivity_criterium = 'att&dru';
 
 ncol = 2 * (length(label_drug));
 nrow = 2; % rate, FF

@@ -1,7 +1,7 @@
-function spike_rate = spike_rate(unit, time_windows)
-% spike_rate = spike_rate(unit, time_windows)
+function spike_rate = spike_rate(unit, time_windows, type)
+% spike_rate = spike_rate(unit, time_windows, type)
 %
-% Computes the firing rate within time windows defined in  `time_windows`
+% Computes the firing count/rate within time windows defined in  `time_windows`
 %
 % Parameters
 % ----------
@@ -9,6 +9,8 @@ function spike_rate = spike_rate(unit, time_windows)
 %     
 % time_windows : struct
 %     
+% type : string
+%     string indicating whether to return spike count (default) or rate
 %
 % Returns
 % -------
@@ -16,6 +18,9 @@ function spike_rate = spike_rate(unit, time_windows)
 %     struct with firing rate per time window
 %
 
+if nargin<3
+    type='count'
+end
 
 time_fields = fields(time_windows);
 
@@ -25,7 +30,12 @@ for itime = 1:length(time_fields)
     time_window = time_windows.(time_fields{itime}){2};
     
     tmp_count = cellfun(@(x) length(find(x>time_window(1) & x<time_window(2))), unit.([event 'Align']), 'UniformOutput',true);
-    tmp_rate = tmp_count / (diff(time_window)/1000);
-    
-    spike_rate.(time_fields{itime}) = tmp_rate;
+    switch type
+        case 'rate'
+            tmp_count = tmp_count * (1000/diff(time_window));
+        case 'count'
+        otherwise
+            error('unknown spike count conversion type')
+    end
+    spike_rate.(time_fields{itime}) = tmp_count;
 end

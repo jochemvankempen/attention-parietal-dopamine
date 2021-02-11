@@ -2,12 +2,13 @@ function batch_analyses()
 % 
 
 subjects = {'J','W'};% dopamine data
+subjects = {'W','J'};% dopamine data
 % subjects = {'S'}; % control data
 
 %% paths
 
 path_data = ['C:\Jochem\Gratc_PPC_DA_new\data\processed'];
-path_data = ['/Users/jochemvankempen/NCL/gratc_DA/processed'];
+% path_data = ['/Users/jochemvankempen/NCL/gratc_DA/processed'];
 
 %% addpaths
 
@@ -19,8 +20,8 @@ recordinglist = get_recordinglist(subjects, path_data);
 
 %% define jobs
 
-Job.spike_rate_summary      = 0;
-Job.spike_rate_ANOVA        = 0;
+Job.spike_rate_summary      = 1;
+Job.spike_rate_ANOVA        = 1;
 Job.spike_rate_ROC          = 1;
 Job.pupil_drug_modulation   = 0;
 Job.RT_drug_modulation      = 0;

@@ -1,14 +1,16 @@
-function [trialdata, unit] = remove_excluded_trials(trialdata, unit)
-% [trialdata, unit] = remove_excluded_trials(trialdata, unit)
+function [trialdata, unit, idx_exclude_trials] = remove_excluded_trials(trialdata, unit, idx_unit)
+% [trialdata, unit] = remove_excluded_trials(trialdata, unit, idx_unit)
 %
 % remove trials from both trialdata and unit. Trials in the field
-% `trialdata.exclude_trial` will be removed.
+% `unit.idx_include_trials` will be removed.
 %
 
 event_fields = fields(unit);
 event_fields = event_fields(contains(event_fields, 'Align'));
 
+idx_exclude_trials = ~unit.idx_include_trials(idx_unit,:);
+
 for ievent = 1:length(event_fields)
-    unit.(event_fields{ievent})(:,[trialdata.exclude_trial]) = [];
+    unit.(event_fields{ievent})(:,idx_exclude_trials) = [];
 end
-trialdata([trialdata.exclude_trial]) = [];
+trialdata(idx_exclude_trials) = [];
