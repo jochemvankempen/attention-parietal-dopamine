@@ -10,7 +10,7 @@ function spike_rate = spike_rate(unit, time_windows, type)
 % time_windows : struct
 %     
 % type : string
-%     string indicating whether to return spike count (default) or rate
+%     string indicating whether to return spike count or rate (default)
 %
 % Returns
 % -------
@@ -19,7 +19,7 @@ function spike_rate = spike_rate(unit, time_windows, type)
 %
 
 if nargin<3
-    type='count'
+    type='rate';
 end
 
 time_fields = fields(time_windows);

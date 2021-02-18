@@ -1,10 +1,13 @@
 function batch_population()
 
 clear all
+addpath(genpath('./attention-parietal-dopamine'))
+addpath(genpath('./plotj'))
+
 %% param
 subjects = {'J','W'};
-path_data = ['C:\Jochem\Gratc_PPC_DA_new\data\processed'];
-% path_data = ['/Users/jochemvankempen/NCL/gratc_DA/processed'];
+% path_data = ['C:\Jochem\Gratc_PPC_DA_new\data\processed'];
+path_data = ['/Users/jochemvankempen/NCL/gratc_DA/processed'];
 path_population = regexprep(path_data,'processed','population');
 
 if ~isfolder(path_population)
@@ -35,7 +38,7 @@ waveform = get_population_data(recordinglist, 'waveform', path_data);
 % pupil_windows = get_population_data(recordinglist, 'pupil_windows', path_data, 'stim');
 % pupil_timeseries = get_population_data(recordinglist, 'pupil_timeseries', path_data, 'stim');
 
-% RT = get_population_data(recordinglist, 'RT_drug_modulation', path_data, 'stim');
+RT = get_population_data(recordinglist, 'RT_drug_modulation', path_data, 'stim');
 
 %% Extract param
 
@@ -108,12 +111,12 @@ labels = {...
     'Attention',...
     'Drug',...
     'Interaction'};
-    
+
 set(gca,'XTickLabel',labels,'XTickLabelRotation',-25, 'FontSize', fSet.Fontsize_text)
 axis square
 % subtightplot(1, 2, 2, fSet.subplotGap, fSet.subplotMargin, fSet.subplotMargin)
 % plotj_initAx(fSet, 'axlabel', 2);
-% 
+%
 % venn_prop = [...
 %     A_venn, AB_venn, B_venn... % A, A&B, B
 %     BC_venn C_venn ... % B&C, C
@@ -127,7 +130,7 @@ axis square
 % venn(Ap, Ip)
 
 
-% text(0,0.8,sprintf('%d units with visual response (%1.1f%%)\n', selective_visual, selective_visual/nUnits*100))
+% text(0,0.8,sprintf('%d units with visual response (%1.1f%%)\n', selective_visual, selective_visual/num_units*100))
 % set(gca,'xColor',[1 1 1],'yColor',[1 1 1])
 
 
@@ -135,7 +138,50 @@ axis square
 savefigname = sprintf('cellProportion');
 figSave(savefigname, readpaths.fig, {'png', 'svg'})
 
+%% Print statistics
 
+fprintf('UNITS\n')
+fprintf('\tRecorded %d units\n', height(unitlist))
+
+fprintf('SUBJECTS\n')
+M1 = strcmpi(unitlist.Subject, {'W'});
+M2 = strcmpi(unitlist.Subject, {'J'});
+fprintf('\tRecorded %d/%d units from monkey 1/2\n', length(find(M1)), length(find(M2)))
+
+fprintf('SELECTIVITY\n')
+unit_selectivity = get_unit_selectivity(unitlist, rate_ANOVA.selectivity, 'visual');
+selective_visual = length(find(unit_selectivity));
+fprintf('\t%d units with visual response (%1.1f%%)\n', selective_visual, selective_visual/num_units*100)
+unit_selectivity = get_unit_selectivity(unitlist, rate_ANOVA.selectivity, 'att');
+selective_attention = length(find(unit_selectivity));
+fprintf('\t%d units with attentional modulation (%1.1f%%)\n', selective_attention, selective_attention/num_units*100)
+% unit_selectivity = get_unit_selectivity(unitlist, rate_ANOVA.selectivity, 'visual&att');
+% selective_visAtt = length(find(unit_selectivity));
+%
+% unit_selectivity = selectData(unitlist, 'visualDrug', 'NA', allSelectivity);
+% selective_visDrug = length(find(unit_selectivity));
+
+fprintf('DRUG\n')
+selective_drug = 0;
+selective_interaction = 0;
+for idrug = 1:length(label_drug)
+    
+    num_drug_units = strcmpi(unitlist.Drug, label_drug(idrug)); % total units recorded with this drug
+    
+    unit_selectivity = get_unit_selectivity(unitlist, rate_ANOVA.selectivity, 'dru',{'drug',label_drug(idrug)});
+    
+    fprintf('\tRecorded %d/%d (%d) units from monkey with %s 1/2\n', length(find(M1 & num_drug_units)), length(find(M2 & num_drug_units)), length(find(num_drug_units)), label_drug{idrug})
+    
+    selective_drug = selective_drug+length(find(unit_selectivity));
+    fprintf('\t%d units modulated by %s (%1.1f%%)\n', length(find(unit_selectivity)), label_drug{idrug}, length(find(unit_selectivity))/length(find(num_drug_units))*100)
+    
+    unit_selectivity = get_unit_selectivity(unitlist, rate_ANOVA.selectivity, 'att*dru',{'drug',label_drug(idrug)});
+    selective_interaction = selective_interaction+length(find(unit_selectivity));
+    fprintf('\t%d units interaction with attention %s (%1.1f%%)\n', length(find(unit_selectivity)), label_drug{idrug}, length(find(unit_selectivity))/length(find(num_drug_units))*100)
+end
+fprintf('\t%d total units modulated by attention  (%1.1f%%)\n', selective_attention, selective_attention/num_units*100)
+fprintf('\t%d total units modulated by drug application  (%1.1f%%)\n', selective_drug, selective_drug/num_units*100)
+fprintf('\t%d total units interaction attention by drug application  (%1.1f%%)\n', selective_interaction, selective_interaction/num_units*100)
 
 %% figure 2 - plot population histogram and example unit
 
@@ -151,20 +197,20 @@ nrow = length(label_drug);
 
 idx_subplot = {1,2,3,6,7,8,[4 5 9 10]};
 
-[fH, fSet] = plotj_initFig('width', 22, 'height', 14, 'Journal',plot_conventions);
+[fH, fSet] = plotj_initFig('width', 18, 'height', 11, 'Journal',plot_conventions);
 fSet.subplotGap2 = fSet.subplotGap .* [1.3 0.30];
 
 iplot = 0;
 for irow = 1:nrow
-        
+    
     idx_unit = get_unit_selectivity(unitlist, rate_ANOVA.selectivity, 'att&dru', {'drug',label_drug(irow)});
-
+    
     clear h
     for ievent = 1:length(label_event)
         iplot = iplot+1;
         
         rate_PSTH = get_population_data(recordinglist, 'spike_rate_PSTH', path_data, events{ievent});
-
+        
         times = rate_PSTH.time;
         samples = rate_PSTH.samples;
         
@@ -177,14 +223,14 @@ for irow = 1:nrow
         
         if ievent==(ceil(length(label_event)/2))
             ht = title([label_drug{irow} label_drug_ext{irow}], 'FontSize', fSet.Fontsize_title);
-%             ht.Position = ht.Position + [0.05 0 0];
+            %             ht.Position = ht.Position + [0.05 0 0];
         end
         if (ievent~=1)
             axh = get(gca);
             axh.YTick = [];
             axh.YAxis.Visible = 'off'; % remove y-axis
-%             axes('Color','none','YColor','none')
-%             set(gca,'xtick',[])
+            %             axes('Color','none','YColor','none')
+            %             set(gca,'xtick',[])
         end
         hold on
         
@@ -213,7 +259,7 @@ for irow = 1:nrow
         elseif ievent==3
             if 0%irow==1
                 hleg = legend(h, legend_text, 'FontSize', fSet.Fontsize_text, 'Box', 'Off');
-                hleg.Position = hleg.Position + [0.05 0.1 0 0];
+                hleg.Position = hleg.Position + [0.05 0.15 0 0];
             end
         end
         
@@ -225,7 +271,7 @@ for irow = 1:nrow
     
 end
 hleg = legend(h, text_legend, 'FontSize', fSet.Fontsize_text, 'Box', 'Off', 'Location', 'NorthWest');
-hleg.Position = hleg.Position + [-0.04 0.5 0 0];
+hleg.Position = hleg.Position + [-0.04 0.53 0 0];
 
 
 % plot example cell, plot raster for example cell, only drug/attention
@@ -247,7 +293,7 @@ unit2plot = 1;
 idx_unit = strcmpi(rec2plot(1), unitlist.Subject) ...
     & strcmpi(rec2plot(2), unitlist.Date) ...
     & (unitlist.unit==unit2plot);
-    
+
 loadfilename = fullfile(path_data, unitlist.Subject(idx_unit,:), unitlist.Date(idx_unit,:), 'unit.mat');
 unit = load(loadfilename);
 loadfilename = fullfile(path_data, unitlist.Subject(idx_unit,:), unitlist.Date(idx_unit,:), 'trialdata.mat');
@@ -295,27 +341,28 @@ text(axH, -750, ylim2use*0.95, pstring, 'FontSize', fSet.Fontsize_text)
 
 % save
 savefigname = fullfile(path_population, sprintf('Population_hist'));
-plotj_saveFig(savefigname, {'png', 'svg'})
+plotj_saveFig(savefigname, {'png', 'svg', 'pdf'})
 
 
 
 %% plot histogram cell-widths
 
-binsize = 25; 
+binsize = 25;
 binedges = 50:binsize:600;
 
 assert(any(ismember(binedges,waveform_cutoff)), 'threshold needs to be included in binedges')
 
-[fH, fSet] = plotj_initFig('width', 25, 'height', 10, 'Journal',plot_conventions);
+[fH, fSet] = plotj_initFig('width', 20, 'height', 12, 'Journal',plot_conventions);
+fSet.subplotGap = fSet.subplotGap .* [1 0.8];
 
 ncol=4;
-nrow=1;
+nrow=2;
 
 subtightplot(nrow, ncol, 1, fSet.subplotGap, fSet.subplotMargin, fSet.subplotMargin)
 plotj_initAx(fSet, 'axlabel', 1, 'axlabelDisplacement', [0.07, 0.01]);
 hold on
 
-x = waveform.time-(7*6*5.4); 
+x = waveform.time-(7*6*5.4);
 plot(x, waveform.waveform(unit_class==1, :)*-1, 'Color', [fSet.colors(1,:) 0.5])
 plot(x, waveform.waveform(unit_class==2, :)*-1, 'Color', [fSet.colors(2,:) 0.5])
 
@@ -347,7 +394,7 @@ hleg.Position = hleg.Position + [0.08 0 0 0];
 
 
 p_string = get_significance_strings(p_value, 'round', 0);
-text(400, 13, {'Calibrated Hartigan''s dip test:', p_string}, 'FontSize', fSet.Fontsize_text)
+h_text(1) = text(400, 13, {'Calibrated Hartigan''s dip test:', p_string}, 'FontSize', fSet.Fontsize_text);
 
 savefigname = fullfile(path_population, sprintf('Population_broadNarrow'));
 plotj_saveFig(savefigname, {'png', 'svg'})
@@ -365,10 +412,10 @@ nrow = 2; % rate, FF
 idx_subplot = [1 2 ncol+1 ncol+2 ; 3 4 ncol+3 ncol+4] ;
 idx_axlabel = [1 NaN 2 NaN ; 3 NaN 4 NaN]+2;
 
-[fH, fSet] = plotj_initFig('figNum', 2, 'width', 25, 'height', 16, 'Journal',plot_conventions);
+[fH, fSet] = plotj_initFig('figNum', 2, 'width', 20, 'height', 12, 'Journal',plot_conventions);
 fSet.subplotGap = fSet.subplotGap .* [1 0.8];
 
-[P, h_text] = deal( NaN(length(label_drug), 2, 2, 2) ); % drugtype, actvity-type, attention, drug-offon, 
+[P, h_text] = deal( NaN(length(label_drug), 2, 2, 2) ); % drugtype, actvity-type, attention, drug-offon,
 for idrug = 1:length(label_drug)
     
     % unit selection
@@ -379,17 +426,19 @@ for idrug = 1:length(label_drug)
         
         if irow == 1
             % mean rate
+            datatype = 'rate';
             data2plot = rate_summary.rate;
             ylim2use = [0.7 100];
-                        
+            
             scale ='Log';
             x_text = 0.005;
             y_text = [0.9 0.4];
         elseif irow == 2
             % Fano factor
+            datatype = 'FF';
             data2plot = rate_summary.FF;
             ylim2use = [0 10];
-                        
+            
             scale ='Linear';
             x_text = 0.1;
             y_text = [0.95 0.1];
@@ -407,6 +456,7 @@ for idrug = 1:length(label_drug)
             for unittype = 1:2
                 unit2plot = idx_unit & unit_class==unittype;
                 
+                % extract data
                 tmp_data = squeeze(mean(data2plot(unit2plot,:,idx_attention==iatt),3));
                 
                 plotj_scatter(tmp_data, ...
@@ -415,10 +465,21 @@ for idrug = 1:length(label_drug)
                     'markerEdgeColor', fSet.colors(unittype,:), 'markerEdgeAlpha', 0.5, ...
                     'axislimit', ylim2use);
                 
+                % stats
                 P(idrug,irow,iatt,unittype) = compare_means(tmp_data(:,1), tmp_data(:,2), 1, 'rank');
+                
+                % effect size
+                d = computeCohen_d(tmp_data(:,2), tmp_data(:,1), 'paired');
+                
+                % mean difference
+                delta_data = tmp_data(:,2)-tmp_data(:,1);
                 
                 axis square
                 p_string = get_significance_strings(P(idrug,irow,iatt,unittype), 'rounded', 0);
+                
+                % print result
+                fprintf('%s: %s, %s, attend %s: delta-%s %1.2f +- %1.2f, %s, Cohens''s d = %1.2f\n', ...
+                    datatype, label_drug{idrug}, label_celltype{unittype}, label_attention{iatt}, datatype, mean(delta_data), std(delta_data)/sqrt(length(find(unit2plot))), p_string, d)
                 
                 % plot text
                 tmp_x = get(gca,'xlim');
@@ -426,7 +487,7 @@ for idrug = 1:length(label_drug)
                 
                 x_pos = get_value_range(tmp_x, x_text);
                 y_pos = get_value_range(tmp_y, y_text(1)-y_text(2)*(unittype-1));
-
+                
                 h_text(idrug,irow,iatt,unittype) = text(x_pos, y_pos, ...
                     sprintf('%s', p_string), ...
                     'Color', fSet.colors(unittype,:));
@@ -466,52 +527,57 @@ for idrug = 1:length(label_drug)
 end
 
 [p_fdr, p_masked] = FDR(P, 0.05);
+plotj_text_emphasise(h_text, p_masked, 'italic');
+plotj_text_emphasise(h_text, p_masked, 'bold');
 
-for idrug = 1:length(label_drug)
-    for irow = 1:nrow
-        for iatt = 1:2
-            for unittype = 1:2
-                if p_masked(idrug,irow,iatt,unittype)
-                    set(h_text(idrug,irow,iatt,unittype), 'FontWeight','Bold')
-                end
-            end
-        end
-    end
-end
+
 savefigname = fullfile(path_population, sprintf('mean_rate_FF_drug'));
 plotj_saveFig(savefigname, {'png', 'svg'})
 
 
 %% Attend ROC, drug/no drug, narrow/broad. DrugMI-ejecCurrent
+datatype = 'MI';
 
-% selectivity_criterium = 'none';
+
+selectivity_criterium = 'none';
 selectivity_criterium = 'att&dru';
 % selectivity_criterium = 'dru';
 % selectivity_criterium = 'dru';
-
+% selectivity_criterium = 'att';
 
 ncol = length(label_drug);
 nrow = 2;
 
-[fH, fSet] = plotj_initFig('width', 25, 'height', 20, 'Journal',plot_conventions);
+[fH, fSet] = plotj_initFig('width', 20, 'height', 15, 'Journal',plot_conventions);
 fSet.subplotGap = fSet.subplotGap.*[1.2 .8];
 
 axislim = [0.25 0.9];
 [P, h_text] = deal( NaN(length(label_drug), 2) ); % drugtype, unit-type,
+[P_roc, h_text_roc] = deal( NaN(length(label_drug), 2) ); % drugtype, unit-type,
 iplot=0;
 for idrug = 1:length(label_drug)
     iplot = iplot+1;
     
     % unit selection
     idx_unit = get_unit_selectivity(unitlist, rate_ANOVA.selectivity, selectivity_criterium, {'drug',label_drug(idrug)});
-
-    subtightplot(nrow, ncol, iplot, fSet.subplotGap, fSet.subplotMargin, fSet.subplotMargin)
+    
+    % subplot axis
+    h_ax_subplot = subtightplot(nrow, ncol, iplot, fSet.subplotGap, fSet.subplotMargin, fSet.subplotMargin);
     plotj_initAx(fSet, 'axlabel', idrug, 'axlabelDisplacement', [0.01, 0.02]);
     hold on
     
     title([label_drug{idrug} label_drug_ext{idrug}], 'FontSize', fSet.Fontsize_title)
     
+    % inset axis
+    pos = get(h_ax_subplot, 'Position');
+    h_ax_inset = axes('Position', [pos(1)+0.28 pos(2)+0.035 0.1 0.11]) ; % inset
+    plotj_initAx(fSet)
+    hold on
+
+    
     for unittype = 1:2
+        
+        set(fH, 'currentaxes', h_ax_subplot);
         
         unit2plot = idx_unit & unit_class==unittype;
         
@@ -523,89 +589,305 @@ for idrug = 1:length(label_drug)
             'markerEdgeColor', fSet.colors(unittype,:), 'markerEdgeAlpha', 0.5, ...
             'axislimit', axislim);
         
+        % stats
         P(idrug,unittype) = compare_means(tmp_data(:,1),tmp_data(:,2), 1, 'rank');
         
         axis square
         p_string = get_significance_strings(P(idrug,unittype), 'rounded', 0);
         
-        
+        % set text
         tmp_x = get(gca,'xlim');
         tmp_y = get(gca,'ylim');
         
-        x_pos = get_value_range(tmp_x, 0.1);
+        x_pos = get_value_range(tmp_x, 0.05);
         y_pos = get_value_range(tmp_y, 0.95 - 0.07 * (unittype-1));
         
         h_text(idrug,unittype) = text(x_pos, y_pos, ...
             sprintf('%s, %s (n=%d)', p_string, label_celltype{unittype}, length(find(unit2plot))), ...
             'Color', fSet.colors(unittype,:), 'FontSize', fSet.Fontsize_ax);
         
+        %%% inset
+        % att AUROC relative to 0.5
+        tmp_data = abs(tmp_data-0.5);
+        P_roc(idrug,unittype) = compare_means(tmp_data(:,1),tmp_data(:,2), 1, 'rank');
+
+        bar_data = diff(tmp_data,1,2);
+        bar_y = mean(bar_data);
+        bar_y_err = std(bar_data)/sqrt(length(bar_data));
+        
+        % plot
+        set(fH, 'currentaxes', h_ax_inset);
+        h_scatter = scatter(unittype + (rand(length(bar_data),1)-0.5)*0.1, bar_data, ...
+            '.', 'MarkerFaceColor', fSet.colors(unittype,:),'MarkerEdgeColor', fSet.colors(unittype,:));
+        h_scatter.MarkerFaceAlpha = 0.5;
+        h_scatter.MarkerEdgeAlpha = 0.5;
+
+        plot(unittype + [-0.25 0.25], [bar_y bar_y], 'Color', fSet.colors(unittype,:), 'linew', fSet.LineWidth+1)
+        plot(unittype + [0 0], bar_y + [-bar_y_err bar_y_err], 'Color', fSet.colors(unittype,:), 'linew', fSet.LineWidth)
+        
+        p_string = get_significance_strings(P_roc(idrug,unittype), 'rounded', 0);
+
+        % set text
+        % tmp_y = get(gca,'ylim');
+        %y_pos = get_value_range(tmp_y, 0.95);
+        y_pos = 0.1*idrug;
+        
+        h_text_roc(idrug,unittype) = text(unittype+0.1, y_pos, ...
+            p_string, ...
+            'Color', fSet.colors(unittype,:), ...
+            'FontSize', fSet.Fontsize_ax);
     end
     
-    xlabel('Attention AUROC no drug','FontSize', fSet.Fontsize_text)
+    set(h_ax_inset, 'XTick', [1 2], 'XTickLabel', label_celltype)
+    ylabel(h_ax_inset, [plotj_symbol('Delta') ' | AUROC-0.5 |'],'FontSize', fSet.Fontsize_text)
+
+    xlabel(h_ax_subplot, 'Attention AUROC no drug','FontSize', fSet.Fontsize_text)
     if idrug==1
-        ylabel('Attention AUROC drug','FontSize', fSet.Fontsize_text)
+        ylabel(h_ax_subplot, 'Attention AUROC drug','FontSize', fSet.Fontsize_text)
     end
 end
 [p_fdr, p_masked] = FDR(P, 0.05);
+[p_fdr, p_masked_corr] = FDR(P_roc, 0.05);
 
-for idrug = 1:length(label_drug)
-    for unittype = 1:2
-        if p_masked(idrug,unittype)
-            set(h_text(idrug,unittype), 'FontWeight','Bold')
-        end
-    end
-end
+plotj_text_emphasise(h_text, p_masked, 'italic');
+plotj_text_emphasise(h_text, p_masked, 'bold');
+
+
+
+
 
 
 
 %%% drugMI/attAUROC against ejection current
-for idatatype = 1%:nrow
-    
-    if idatatype==1
-%         data2plot = rate_ROC.mi_drug(:,1);
+
+switch datatype
+    case 'MI'
+        %         data2plot = rate_ROC.mi_drug(:,1);
         data2plot = mean(rate_ROC.mi_drug,2);
         
         unittype=[];
-
+        
         ylabel2use = 'Drug modulation index';
         ylim2use = [];
-    elseif idatatype==2
+    case 'AUC'
         data2plot = squeeze(diff(rate_ROC.roc_attend,1,2));
-        
-        filename = [readpaths.data sprintf('doseResponse_attAUROC_%s.csv', label_drug{idrug})];
+        data2plot = squeeze(mean(data2plot(:,idx_attention_roc==1),2)); % average over relevant auroc conditions
         
         unittype = [];
         
-        ylabel2use = [plots_symbol('Delta') ' attention AUROC'];
+        ylabel2use = [plotj_symbol('Delta') ' attention AUROC'];
         ylim2use = [-0.25 0.3];
+end
+
+clear ax h
+for idrug = 1:ncol
+    clear text_legend
+    iplot=iplot+1;
+    
+    idx_unit = get_unit_selectivity(unitlist, rate_ANOVA.selectivity, selectivity_criterium, {'drug',label_drug(idrug)});
+    
+    ax(idrug) = subtightplot(nrow, ncol, iplot, fSet.subplotGap, fSet.subplotMargin, fSet.subplotMargin);
+    plotj_initAx(fSet, 'axlabel', iplot, 'axlabelDisplacement', [0.01, 0.02]);
+    hold on
+    
+    title([label_drug{idrug} label_drug_ext{idrug}], 'FontSize', fSet.Fontsize_title)
+    
+    if ~isempty(unittype)
+        unit2plot = idx_unit & unit_class==unittype;
+    else
+        unit2plot = idx_unit;
+    end
+    length(find(unit2plot))
+    
+    % ejectionCurrent
+    ejection_current = nanmean(unitlist.EjectCurrent(unit2plot),2);
+    xlabel_event = 'Ejection Current';
+    xlim2use = [17 90];
+    
+    if length(unique(unit_class(unit2plot)))==1
+        tmp_data = [ejection_current  data2plot(unit2plot)];
+        hscat = plotj_scatter(tmp_data, ...
+            'markerStyle', {'.'}, 'markerSize', markersize, ...
+            'markerFaceColor', fSet.colors(unittype,:), 'markerFaceAlpha', 0.5, ...
+            'axislimit', [], ...
+            'unityLine', 0);
+        text_legend{1} = [label_celltype{unittype} ' (n=' num2str(length(find(unit_class(idx_unit)==unittype))) ')'];
+    else
+        tmp_data = [ejection_current  data2plot(unit2plot)];
+        hscat = plotj_scatter(tmp_data, ...
+            'dataIndex', unit_class(unit2plot), ...
+            'markerStyle', {'o','o'}, 'MarkerSize', markersize, ...
+            'markerFaceColor', fSet.colors(1:2,:), 'markerFaceAlpha', [0.5 0.5], ...
+            'markerEdgeColor', fSet.colors(1:2,:), 'markerEdgeAlpha', [0.5 0.5], ...
+            'axislimit', [], ...
+            'unityLine', 0);
+        text_legend{1} = [label_celltype{1} ' (n=' num2str(length(find(unit_class(idx_unit)==1))) ')'];
+        text_legend{2} = [label_celltype{2} ' (n=' num2str(length(find(unit_class(idx_unit)==2))) ')'];
     end
     
-    clear ax h 
-    for idrug = 1:ncol
+    data_table = table(ejection_current, data2plot(unit2plot), 'VariableNames', {'x', 'y'});
+    [stats2report, predict_data, stats, model] = fitlme_singleVar_sequential(data_table, 0);
+    
+    switch datatype
+        case 'MI'
+            filename = fullfile(path_population, sprintf('doseResponse_drugMI_%s_%s.csv', label_drug{idrug}, selectivity_criterium));
+        case 'AUC'
+            filename = fullfile(path_population, sprintf('doseResponse_attAUROC_%s_%s.csv', label_drug{idrug}, selectivity_criterium));
+    end
+    writetable(data_table, filename)
+    
+    fprintf('Chi(%d) %1.2f, p = %1.3f\n', stats2report.deltaDF, stats2report.LRStat, stats2report.pValue)
+    
+    if any(strcmp('fit_mean', predict_data.Properties.VariableNames))
+        h = plot(predict_data.x, predict_data.fit_mean, 'linewidth', fSet.LineWidth, 'color', [0.3 0.3 0.3]);
+        h = plot(predict_data.x, predict_data.fit_CI_low, '--', 'linewidth', fSet.LineWidth_in, 'Color', [0.3 0.3 0.3]);
+        h = plot(predict_data.x, predict_data.fit_CI_high, '--', 'linewidth', fSet.LineWidth_in, 'Color', [0.3 0.3 0.3]);
+        [pstring_chi,starstring] = get_significance_strings(stats2report.pValue, 'rounded', 0);
+        
+        cond1 = exist([filename(1:end-4) '_R.csv'], 'file');
+        cond2 = strcmpi(model,'quadratic');
+        if cond1 && cond2
+            utable = readtable([filename(1:end-4) '_R.csv']);
+            
+            if utable.usig==1
+                pstring_chi = [pstring_chi ' (U^{+})'];
+            else
+                pstring_chi = [pstring_chi ' (U^{-})'];
+            end
+        end
+        
+    else
+        pstring_chi = '';
+    end
+    
+    
+    switch model
+        case 'linear'
+            betaString = ['\beta' '_{1} = ' num2str(stats.Estimate, '%1.2e')];
+            %         model_color = fSet.colors(2,:);
+        case 'quadratic'
+            betaString = ['\beta' '_{2} = ' num2str(stats.Estimate, '%1.2e')];
+        otherwise
+            betaString = [];
+    end
+    
+    axis square
+    xlabel(xlabel_event, 'FontSize', fSet.Fontsize_text)
+    if idrug==1
+        ylabel(ylabel2use, 'FontSize', fSet.Fontsize_text)
+    end
+    
+    if ~isempty(ylim2use)
+        ylim(ylim2use)
+    end
+    if ~isempty(xlim2use)
+        xlim(xlim2use)
+    end
+    
+    % plot text indicating number of units
+    set(gca, 'Units', 'normalized');
+    
+    tmp_x = get(gca,'xlim');
+    tmp_y = get(gca,'ylim');
+    
+    x_pos = get_value_range(tmp_x, 0.6);
+    y_pos(1) = get_value_range(tmp_y, 0.8);
+    y_pos(2) = get_value_range(tmp_y, 0.9);
+    
+    text(x_pos, y_pos(1), text_legend{1}, 'FontSize', fSet.Fontsize_text, 'Color', fSet.colors(1,:))
+    text(x_pos, y_pos(2), text_legend{2}, 'FontSize', fSet.Fontsize_text, 'Color', fSet.colors(2,:))
+
+    % set ax param
+    set(gca,'YDir','reverse')
+    
+    tmp_x = get(gca,'xlim');
+    tmp_y = get(gca,'ylim');
+    
+    x_pos = get_value_range(tmp_x, 0.05);
+    y_pos = get_value_range(tmp_y, 0.1);
+    
+    text(x_pos, y_pos, {betaString, pstring_chi }, 'fontsize', fSet.Fontsize_text, 'color', [0.3 0.3 0.3])
+    
+end
+
+savefigname = fullfile(path_population, sprintf('attAuroc_DrugResponseCurve'));
+plotj_saveFig(savefigname, {'png', 'svg'})
+
+
+%% DrugMI-ejecCurrent across selectivity indices
+
+datatype = 'MI';
+% datatype = 'AUC';
+
+
+selectivity_criteria = {'none', 'att', 'dru', 'att&dru'};
+label_criteria = {'No subselection', 'Attention-selective', 'Drug-selective', {'Attention & Drug', 'selective'}};
+
+ncol = length(selectivity_criteria);
+nrow = length(label_drug);
+iplot = 0;
+
+[fH, fSet] = plotj_initFig('width', 20, 'height', 11, 'Journal',plot_conventions);
+fSet.subplotGap = fSet.subplotGap.*[1 .75];
+
+idx_subplot = [1:ncol ; (ncol+1):ncol*2];
+%%% drugMI/attAUROC against ejection current
+[P,h_text] = deal(zeros(length(selectivity_criteria), length(label_drug)));
+for icrit = 1:length(selectivity_criteria)
+    
+    selectivity_criterium = selectivity_criteria{icrit};
+    
+    switch datatype
+        case 'MI'
+            %         data2plot = rate_ROC.mi_drug(:,1);
+            data2plot = mean(rate_ROC.mi_drug,2);
+            
+            unittype=[];
+            
+            ylabel2use = 'Drug modulation index';
+            ylim2use = [];
+        case 'AUC'
+            data2plot = squeeze(diff(rate_ROC.roc_attend,1,2));
+            data2plot = squeeze(mean(data2plot(:,idx_attention_roc==1),2)); % average over relevant auroc conditions
+            
+            unittype = [];
+            
+            ylabel2use = [plotj_symbol('Delta') ' attention AUROC'];
+            ylim2use = [-0.25 0.3];
+    end
+    
+    clear ax h
+    for idrug = 1:length(label_drug)
         clear text_legend
         iplot=iplot+1;
         
         idx_unit = get_unit_selectivity(unitlist, rate_ANOVA.selectivity, selectivity_criterium, {'drug',label_drug(idrug)});
-        length(find(idx_unit))
         
-        ax(idrug) = subtightplot(nrow, ncol, iplot, fSet.subplotGap, fSet.subplotMargin, fSet.subplotMargin);
-        plotj_initAx(fSet, 'axlabel', iplot, 'axlabelDisplacement', [0.01, 0.02]);
+        ax(idrug) = subtightplot(nrow, ncol, idx_subplot(iplot), fSet.subplotGap, fSet.subplotMargin, fSet.subplotMargin);
+        if idrug==1
+            plotj_initAx(fSet, 'axlabel', icrit);
+        else
+            plotj_initAx(fSet);
+        end
         hold on
         
-        title([label_drug{idrug} label_drug_ext{idrug}], 'FontSize', fSet.Fontsize_title)
-        
+        if idrug==1
+            % title([label_drug{idrug} label_drug_ext{idrug}], 'FontSize', fSet.Fontsize_title)
+            h_title = title(label_criteria{icrit}, 'FontSize', fSet.Fontsize_title);
+            set(h_title, 'Units', 'normalized');
+            h_title.Position = h_title.Position+[0 0.2 0];
+        end
         if ~isempty(unittype)
             unit2plot = idx_unit & unit_class==unittype;
         else
             unit2plot = idx_unit;
         end
-                length(find(unit2plot))
-
+        
         % ejectionCurrent
         ejection_current = nanmean(unitlist.EjectCurrent(unit2plot),2);
         xlabel_event = 'Ejection Current';
-        xlim2use = [17 90];
-
+        xlim2use = [17 95];
+        
         if length(unique(unit_class(unit2plot)))==1
             tmp_data = [ejection_current  data2plot(unit2plot)];
             hscat = plotj_scatter(tmp_data, ...
@@ -626,23 +908,18 @@ for idatatype = 1%:nrow
             text_legend{1} = [label_celltype{1} ' (n=' num2str(length(find(unit_class(idx_unit)==1))) ')'];
             text_legend{2} = [label_celltype{2} ' (n=' num2str(length(find(unit_class(idx_unit)==2))) ')'];
         end
-        if idatatype==1
-            legend(ax(idrug), hscat, text_legend, 'FontSize', fSet.Fontsize_text, 'Box', 'Off', 'AutoUpdate', 'off', 'Location', 'SouthEast')
-        end
-        %     XLIM = get(gca,'xlim');
-        %     [b,bintr,bintjm] = gmregress(ejectionCurrent, allDrugMI( cells2plot, event2plot));
-        %     h2 = plot(XLIM(1):XLIM(2), [((XLIM(1):XLIM(2)) * b(2)) + b(1)], '-', 'Color', [0 0 0]);
-        %     h2.LineWidth = 3;
         
         data_table = table(ejection_current, data2plot(unit2plot), 'VariableNames', {'x', 'y'});
         [stats2report, predict_data, stats, model] = fitlme_singleVar_sequential(data_table, 0);
-        
-        if idatatype==1
-            filename = fullfile(path_population, sprintf('doseResponse_drugMI_%s.csv', label_drug{idrug}));
-        elseif idatatype==2
-            filename = fullfile(path_population, sprintf('doseResponse_attAUROC_%s.csv', label_drug{idrug}));
+        P(icrit,idrug) = stats2report.pValue;
+                
+        switch datatype
+            case 'MI'
+                filename = fullfile(path_population, sprintf('doseResponse_drugMI_%s_%s.csv', label_drug{idrug}, selectivity_criteria{icrit}));
+            case 'AUC'
+                filename = fullfile(path_population, sprintf('doseResponse_attAUROC_%s_%s.csv', label_drug{idrug}, selectivity_criteria{icrit}));
         end
-        writetable(data_table, filename)
+        writetable(data_table, filename);
         
         fprintf('Chi(%d) %1.2f, p = %1.3f\n', stats2report.deltaDF, stats2report.LRStat, stats2report.pValue)
         
@@ -668,7 +945,6 @@ for idatatype = 1%:nrow
             pstring_chi = '';
         end
         
-        
         switch model
             case 'linear'
                 betaString = ['\beta' '_{1} = ' num2str(stats.Estimate, '%1.2e')];
@@ -678,11 +954,13 @@ for idatatype = 1%:nrow
             otherwise
                 betaString = [];
         end
-                
+        
         axis square
-        xlabel(xlabel_event, 'FontSize', fSet.Fontsize_text)
-        if idrug==1
-            ylabel(ylabel2use, 'FontSize', fSet.Fontsize_text)
+        if idrug==length(label_drug)
+            xlabel(xlabel_event, 'FontSize', fSet.Fontsize_text)
+        end
+        if icrit==1
+            ylabel({label_drug{idrug},ylabel2use}, 'FontSize', fSet.Fontsize_text)
         end
         
         if ~isempty(ylim2use)
@@ -692,26 +970,101 @@ for idatatype = 1%:nrow
             xlim(xlim2use)
         end
         
-        set(gca,'YDir','reverse')
+        % plot text indicating number of units
+        set(gca, 'Units', 'normalized');
         
         tmp_x = get(gca,'xlim');
         tmp_y = get(gca,'ylim');
         
-        x_pos = get_value_range(tmp_x, 0.1);
-        y_pos = get_value_range(tmp_y, 0.1);
+        x_pos = get_value_range(tmp_x, 0.6);
+        y_pos(1) = get_value_range(tmp_y, 0.8);
+        y_pos(2) = get_value_range(tmp_y, 0.9);
         
-        text(x_pos, y_pos, {betaString, pstring_chi }, 'fontsize', fSet.Fontsize_text, 'color', [0.3 0.3 0.3])
-
+        text(x_pos, y_pos(1), text_legend{1}, 'FontSize', fSet.Fontsize_text, 'Color', fSet.colors(1,:))
+        text(x_pos, y_pos(2), text_legend{2}, 'FontSize', fSet.Fontsize_text, 'Color', fSet.colors(2,:))
+        
+        % set ax param
+        set(gca,'YDir','reverse')
+        
+        % plot text with stats
+        tmp_x = get(gca,'xlim');
+        tmp_y = get(gca,'ylim');
+        
+        switch label_drug{idrug}
+            case 'Dopamine'
+                x_pos = get_value_range(tmp_x, 0.65);
+                y_pos = get_value_range(tmp_y, 0.05);
+            case 'SCH23390'
+                x_pos = get_value_range(tmp_x, 0.05);
+                y_pos = get_value_range(tmp_y, 0);
+        end
+        
+        h_text(icrit,idrug) = text(x_pos, y_pos, {betaString, pstring_chi}, 'fontsize', fSet.Fontsize_text, 'color', [0.3 0.3 0.3]);
+        
     end
+    
+    
+    
+    %%% double fit of lme
+    ejection_current = nanmean(unitlist.EjectCurrent,2);
+    idx_unit = get_unit_selectivity(unitlist, rate_ANOVA.selectivity, selectivity_criterium);
+
+    tmp_unitlist = unitlist(idx_unit,:);
+    idx_drug = strcmpi(tmp_unitlist.Drug, label_drug(2))+1;
+    
+    data_table = table(ejection_current(idx_unit), data2plot(idx_unit), idx_drug, 'VariableNames', {'x', 'y', 'idx'});
+
+    switch datatype
+        case 'MI'
+            filename = fullfile(path_population, sprintf('doseResponse_drugMI_%s.csv', selectivity_criteria{icrit}));
+        case 'AUC'
+            filename = fullfile(path_population, sprintf('doseResponse_attAUROC_%s.csv', selectivity_criteria{icrit}));
+    end
+    writetable(data_table, filename);
+    
+    
+    data_table.polyx1 = data_table.x;
+    data_table.polyx2 = data_table.x.^2;
+    
+    data_table.mixed_poly = data_table.polyx1;
+    data_table.mixed_poly(idx_drug==1) = data_table.polyx2(idx_drug==1);
+    
+    
+    lme1 = fitlme(data_table,['y ~ 1']);% fit constant
+    lme2 = fitlme(data_table,['y ~ polyx1']); % fit linear model
+    lme3 = fitlme(data_table,['y ~ polyx1 + polyx2']); % fit quadratic model (this includes the linear model), note this doesn't have orthogonal contrasts!!    
+    lme4 = fitlme(data_table,['y ~ polyx1 + polyx2 + mixed_poly']); % fit mixed linear/quadratic coefficients
+    
+    % compare the model fits
+    comp1 = compare(lme1, lme2, 'CheckNesting',true); % compare linear to constant
+    comp2 = compare(lme2, lme3, 'CheckNesting',true); % compare linear to constant
+    comp3 = compare(lme3, lme4, 'CheckNesting',true); % compare linear to constant
+    
+    % print results
+    fprintf('\nPopulation: \n')
+    fprintf('Linear: Chi(%d) %1.2f, p = %1.3f\n', 1, comp1.LRStat(2), comp1.pValue(2))
+    fprintf('Quadratic: Chi(%d) %1.2f, p = %1.3f\n', 1, comp2.LRStat(2), comp2.pValue(2))
+    fprintf('Mixed: Chi(%d) %1.2f, p = %1.3f\n', 1, comp3.LRStat(2), comp3.pValue(2))
+
+    %%%
+
+    
 end
 
-savefigname = fullfile(path_population, sprintf('attAuroc_DrugResponseCurve'));
-plotj_saveFig(savefigname, {'png', 'svg'})
+% multiple comparison correction
+[p_fdr, p_masked] = FDR(P, 0.05);
 
+plotj_text_emphasise(h_text, p_masked, 'italic', 2);
+plotj_text_emphasise(h_text, p_masked, 'bold', 2);
+
+% save
+savefigname = fullfile(path_population, sprintf('DrugResponseCurve_selection'));
+plotj_saveFig(savefigname, {'png', 'svg'})
 
 %% plot behaviour
 
 mfactor = 1000; %multiplication_factor
+colors = get_colors('att_drug');
 
 ncol = length(label_drug);
 nrow = 1;
@@ -724,7 +1077,7 @@ clear legendText h
 for idrug = 1:ncol
     
     idx_rec = strcmpi(recordinglist.Drug, label_drug(idrug));
-%             
+    %
     subtightplot(nrow, ncol, idrug, fSet.subplotGap, fSet.subplotMargin, fSet.subplotMargin)
     plotj_initAx(fSet, 'axlabel', idrug, 'axlabelDisplacement', [0.07, 0.01]);
     hold on
@@ -751,7 +1104,7 @@ for idrug = 1:ncol
             h(iattDrug).FaceAlpha = 0.7;
             
             text_legend{iattDrug} = sprintf('Attend %s, Drug %s', label_attention{iatt}, label_drug{idrug_in});
-                
+            
             %             plot(iattDrug + xjitter, squeeze(allRTc2plot(:,iatt,idrug_in)), '.', 'Color', attDrugColors(iatt,idrug_in,:))
             
             n = length(find(idx_rec));
@@ -762,7 +1115,7 @@ for idrug = 1:ncol
         end
     end
     
-    %%% do stats    
+    %%% do stats
     % check with linear mixed effect model
     lme = fitlme(RT_table,['RT ~ 1 + (1|recording)']);% fit constant
     lme2 = fitlme(RT_table,['RT ~ attention + (1|recording)']); % fit linear model with attention condition
@@ -806,23 +1159,23 @@ xlim2use = {[-200 1000], [-200 1000], [-1000 200]};
 ylim2use = [-2.7 0.5];
 
 ncol = length(events); % events
-nrow = 1;%length(label_drug)-1;
+nrow = 2;%length(label_drug)-1;
 
 timewinsize = 200;
 timestep = 10;
 
-[fH, fSet] = plotj_initFig('width', 25, 'height', 10, 'Journal',plot_conventions);
+[fH, fSet] = plotj_initFig('width', 20, 'height', 10, 'Journal',plot_conventions);
 fSet.subplotGap = fSet.subplotGap ./ [1 2];
 clear ax h legendText
 iplot = 0;
 for idrug = 1:nrow
-        
+    
     for ievent = 1:length(events)
         iplot = iplot+1;
         
         
         [pupil_timeseries, reclist] = get_population_data(recordinglist, 'pupil_timeseries', path_data, events{ievent});
-
+        
         if nrow==length(label_drug)
             idx_rec = strcmpi(reclist.Drug, label_drug(idrug));
         else
@@ -851,7 +1204,7 @@ for idrug = 1:nrow
             axh.YTick = [];
             axh.YAxis.Visible = 'off'; % remove y-axis
         end
-                
+        
         ilegend = 0;
         
         for idrug_in = 1:2
@@ -897,7 +1250,7 @@ for idrug = 1:nrow
         if idrug==nrow
             xlabel(xlabel_event{ievent}, 'FontSize', fSet.Fontsize_text)
         end
-
+        
         if ievent~=1
             set(gca,'yticklabel',[])
         end
@@ -916,8 +1269,8 @@ end
 savefigname = fullfile(path_population, sprintf('Pupil_timecourse'));
 plotj_saveFig(savefigname, {'png', 'svg'})
 
-%% Pupil drug/no drug
-% 
+%% Pupil drug/no drug, scatter
+%
 
 colors = get_colors('drug');
 
@@ -931,7 +1284,7 @@ xtext = [22 22];
 ytext = [-0.45 -0.32];
 
 
-[fH, fSet] = plotj_initFig('width', 25, 'height', 10, 'Journal',plot_conventions);
+[fH, fSet] = plotj_initFig('width', 20, 'height', 10, 'Journal',plot_conventions);
 fSet.subplotGap = fSet.subplotGap/1.5;
 clear ax h legendText
 
@@ -943,7 +1296,7 @@ for ievent = 1:length(events)
     axlim = [];
     
     subtightplot(nrow, ncol, ievent, fSet.subplotGap, fSet.subplotMargin, fSet.subplotMargin)
-    plotj_initAx(fSet, 'axlabel', ievent+1, 'axlabelDisplacement', [0.05, 0.13]);
+    plotj_initAx(fSet, 'axlabel', ievent+2, 'axlabelDisplacement', [0.05, 0.13]);
     hold on
     title(event_title{ievent}, 'FontSize', fSet.Fontsize_title)
     
@@ -952,13 +1305,13 @@ for ievent = 1:length(events)
     for idrug = 1:length(label_drug)
         
         idx_rec = strcmpi(reclist.Drug, label_drug(idrug));
-            
+        
         pupil2plot = squeeze(nanmean(pupil.pupil(idx_rec,:,:),3));
         
         P(ievent,idrug) = compare_means(pupil2plot(:,1), pupil2plot(:,2), 1, 'rank');
         
         text_p{idrug} = get_significance_strings(P(ievent,idrug), 'rounded', 0);
-                
+        
         text_legend{idrug} = sprintf('%s (n=%d)', label_drug{idrug}, length(find(idx_rec)));
     end
     
@@ -970,7 +1323,7 @@ for ievent = 1:length(events)
         'MarkerEdgeColor', colors, 'MarkerFaceColor', colors, ...
         'MarkerEdgeAlpha', [0.5 0.5] ,'MarkerFaceAlpha', [0.5 0.5]);
     
-%     set(gca,'ydir','reverse')
+    %     set(gca,'ydir','reverse')
     axis square
     tmp_x = get(gca,'xlim');
     tmp_y = get(gca,'ylim');
@@ -980,7 +1333,7 @@ for ievent = 1:length(events)
     for idrug = 1:length(label_drug)
         
         y_pos = get_value_range(tmp_y, 0.2-0.1*(idrug-1));
-
+        
         h_text(ievent,idrug) = text(x_pos, y_pos, text_p{idrug}, 'FontSize', fSet.Fontsize_text, 'color', colors(idrug,:));
     end
     
@@ -993,19 +1346,13 @@ for ievent = 1:length(events)
         hleg = legend(h, text_legend, 'FontSize', fSet.Fontsize_text, 'Box', 'Off', 'Location', 'NorthEast');
         hleg.Position = hleg.Position + [0.05 0.3 0 0];
     end
-
+    
 end
 
 [p_fdr, p_masked] = FDR(P, 0.05);
+plotj_text_emphasise(h_text, p_masked, 'italic');
+plotj_text_emphasise(h_text, p_masked, 'bold');
 
-for ievent = 1:length(events)
-    for idrug = 1:length(label_drug)
-        if p_masked(ievent,idrug)
-            set(h_text(ievent,idrug), 'FontWeight','Bold')
-        end
-    end
-end
+savefigname = fullfile(path_population, sprintf('Pupil_scatter'));
+plotj_saveFig(savefigname, {'png', 'svg'})
 
-
-% savefigname = sprintf('Pupil_scatter');
-% figSave(savefigname, readpaths.fig, {'png', 'svg'})

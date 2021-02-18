@@ -56,6 +56,8 @@ for itw = 1:length(timewin_fields)
             
             P = zeros(num_unit, 7);
             
+%             P = zeros(num_unit, 3);
+
         case 'msacc'
             condition_text = {'1','2','3','4'};
             drug_text = {'no drug','drug'};
@@ -81,8 +83,9 @@ for itw = 1:length(timewin_fields)
                 factor.attention = attention([tmp_trialdata.cond_num])';
                 factor.drug = [tmp_trialdata.drug]' + 1;
                 factor.direction = direction([tmp_trialdata.cond_num])';
-                
                 groups = {attention_text(factor.attention)', drug_text(factor.drug)', direction_text(factor.direction)'};
+                
+%                 groups = {attention_text(factor.attention)', drug_text(factor.drug)'};
                 
             case 'msacc'
                 factor.condition = [tmp_trialdata.cond_num]';

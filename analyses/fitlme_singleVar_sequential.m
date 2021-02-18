@@ -37,10 +37,10 @@ if ~exist('onlyLinearFit','var')
     onlyLinearFit = 0;
 end
 
-lme = fitlme(data_table,['y ~ 1 ']);% fit constant
-lme2 = fitlme(data_table,['y ~ x']); % fit linear model
+lme = fitlme(data_table,['y ~ 1 '], 'FitMethod', 'ML');% fit constant
+lme2 = fitlme(data_table,['y ~ x'], 'FitMethod', 'ML'); % fit linear model
 if ~onlyLinearFit
-    lme3 = fitlme(data_table,['y ~ x^2']); % fit quadratic model (this includes the linear model), note this doesn't have orthogonal contrasts!!
+    lme3 = fitlme(data_table,['y ~ x^2'], 'FitMethod', 'ML'); % fit quadratic model (this includes the linear model), note this doesn't have orthogonal contrasts!!
 end
 % compare the model fits
 comp1 = compare(lme, lme2, 'CheckNesting',true); % compare linear to constant

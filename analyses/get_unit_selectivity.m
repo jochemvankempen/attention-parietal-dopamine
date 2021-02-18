@@ -88,7 +88,7 @@ switch subselection{1}
     case 'subject'
         
     case 'drug'
-        
+        assert(iscell(subselection{2}), 'subselection{2} should be a cell')
         idx_subselection = strcmpi(subselection{2}, unitlist.Drug);
         
 end
