@@ -560,6 +560,7 @@ for idrug = 1:length(label_drug)
     
     % unit selection
     idx_unit = get_unit_selectivity(unitlist, rate_ANOVA.selectivity, selectivity_criterium, {'drug',label_drug(idrug)});
+    idx_unit_interaction = get_unit_selectivity(unitlist, rate_ANOVA.selectivity, 'att*dru', {'drug',label_drug(idrug)});
     
     % subplot axis
     h_ax_subplot = subtightplot(nrow, ncol, iplot, fSet.subplotGap, fSet.subplotMargin, fSet.subplotMargin);
@@ -571,7 +572,7 @@ for idrug = 1:length(label_drug)
     % inset axis
     pos = get(h_ax_subplot, 'Position');
     h_ax_inset = axes('Position', [pos(1)+0.28 pos(2)+0.035 0.1 0.11]) ; % inset
-    plotj_initAx(fSet)
+    plotj_initAx(fSet);
     hold on
 
     
@@ -580,11 +581,17 @@ for idrug = 1:length(label_drug)
         set(fH, 'currentaxes', h_ax_subplot);
         
         unit2plot = idx_unit & unit_class==unittype;
+        unit2plot_interaction = idx_unit_interaction & unit_class==unittype;
         
         tmp_data = squeeze(mean(rate_ROC.roc_attend(unit2plot,:,idx_attention_roc==1),3));
+        idx = tmp_data(:,1)<0.5;
+        tmp_data(idx,:) = 1-tmp_data(idx,:);
+
+        
+        idx_interaction = unit2plot_interaction(unit2plot)+1;
         
         plotj_scatter(tmp_data, ...
-            'markerStyle', {'o'}, 'MarkerSize', markersize, ...
+            'markerStyle', {'o','v'}, 'MarkerSize', markersize, ...
             'markerFaceColor', fSet.colors(unittype,:), 'markerFaceAlpha', 0.5, ...
             'markerEdgeColor', fSet.colors(unittype,:), 'markerEdgeAlpha', 0.5, ...
             'axislimit', axislim);
@@ -608,10 +615,15 @@ for idrug = 1:length(label_drug)
         
         %%% inset
         % att AUROC relative to 0.5
-        tmp_data = abs(tmp_data-0.5);
-        P_roc(idrug,unittype) = compare_means(tmp_data(:,1),tmp_data(:,2), 1, 'rank');
+%         tmp_data = abs(tmp_data-0.5);
+%         P_roc(idrug,unittype) = compare_means(tmp_data(:,1),tmp_data(:,2), 1, 'rank');
 
+        P_roc(idrug,unittype) = compare_means(tmp_data(:,1),tmp_data(:,2), 1, 'rank');
+% 
         bar_data = diff(tmp_data,1,2);
+        P_roc(idrug,unittype) = compare_means(bar_data,0, 1, 'rank');
+% 
+        
         bar_y = mean(bar_data);
         bar_y_err = std(bar_data)/sqrt(length(bar_data));
         
@@ -824,15 +836,16 @@ selectivity_criteria = {'none', 'att', 'dru', 'att&dru'};
 label_criteria = {'No subselection', 'Attention-selective', 'Drug-selective', {'Attention & Drug', 'selective'}};
 
 ncol = length(selectivity_criteria);
-nrow = length(label_drug);
+nrow = length(label_drug)+1;
 iplot = 0;
 
-[fH, fSet] = plotj_initFig('width', 20, 'height', 11, 'Journal',plot_conventions);
+[fH, fSet] = plotj_initFig('width', 20, 'height', 16, 'Journal',plot_conventions);
 fSet.subplotGap = fSet.subplotGap.*[1 .75];
 
-idx_subplot = [1:ncol ; (ncol+1):ncol*2];
+idx_subplot = [1:ncol ; (ncol+1):ncol*2; (ncol*2+1):ncol*3];
 %%% drugMI/attAUROC against ejection current
 [P,h_text] = deal(zeros(length(selectivity_criteria), length(label_drug)));
+[P_population,h_text_population] = deal(zeros(length(selectivity_criteria),1));
 for icrit = 1:length(selectivity_criteria)
     
     selectivity_criterium = selectivity_criteria{icrit};
@@ -1040,22 +1053,55 @@ for icrit = 1:length(selectivity_criteria)
     comp2 = compare(lme2, lme3, 'CheckNesting',true); % compare linear to constant
     comp3 = compare(lme3, lme4, 'CheckNesting',true); % compare linear to constant
     
+    P_population(icrit) = comp3.pValue(2);
+    
     % print results
     fprintf('\nPopulation: \n')
     fprintf('Linear: Chi(%d) %1.2f, p = %1.3f\n', 1, comp1.LRStat(2), comp1.pValue(2))
     fprintf('Quadratic: Chi(%d) %1.2f, p = %1.3f\n', 1, comp2.LRStat(2), comp2.pValue(2))
     fprintf('Mixed: Chi(%d) %1.2f, p = %1.3f\n', 1, comp3.LRStat(2), comp3.pValue(2))
 
-    %%%
+    % plot text
+    iplot=iplot+1;    
+    subtightplot(nrow, ncol, idx_subplot(iplot), fSet.subplotGap, fSet.subplotMargin, fSet.subplotMargin);
+    plotj_initAx(fSet);
+    hold on
+    axis off
+    [pstring_chi] = get_significance_strings(comp3.pValue(2), 'rounded', 0);
+    [pstring_coef1] = get_significance_strings(lme4.Coefficients.pValue(2), 'rounded', 0);
+    [pstring_coef2] = get_significance_strings(lme4.Coefficients.pValue(3), 'rounded', 0);
+    [pstring_coef3] = get_significance_strings(lme4.Coefficients.pValue(4), 'rounded', 0);
 
     
+    
+    text2plot = { ...
+        sprintf('%s(1) = %1.2f, %s', '\chi', comp3.LRStat(2), pstring_chi), ... # final model fit
+        '', ...
+        sprintf('%s_{1} = %1.2e, %s', '\beta', lme4.Coefficients.Estimate(2), pstring_coef1), ... # first coefficient
+        sprintf('%s_{2} = %1.2e, %s', '\beta', lme4.Coefficients.Estimate(3), pstring_coef2), ... # first coefficient
+        sprintf('%s_{3} = %1.2e, %s', '\beta', lme4.Coefficients.Estimate(4), pstring_coef3), ... # first coefficient
+        };
+    %
+
+    h_text_population(icrit,1) = text(0,0,text2plot,'Interpreter','tex');
+    ylim([-0.5 0.5])
+    
+    if icrit==1
+        text(-0.2, 0, ['"Population Model"'], 'Rotation', 90, 'HorizontalAlignment', 'center')
+    end
+
 end
 
-% multiple comparison correction
+% multiple comparison correction, individual models
 [p_fdr, p_masked] = FDR(P, 0.05);
-
 plotj_text_emphasise(h_text, p_masked, 'italic', 2);
 plotj_text_emphasise(h_text, p_masked, 'bold', 2);
+
+% multiple comparison correction, population models
+[p_fdr, p_masked] = FDR(P_population, 0.05);
+plotj_text_emphasise(h_text_population, p_masked, 'italic', 1);
+plotj_text_emphasise(h_text_population, p_masked, 'bold', 1);
+
 
 % save
 savefigname = fullfile(path_population, sprintf('DrugResponseCurve_selection'));
