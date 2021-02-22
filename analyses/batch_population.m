@@ -6,8 +6,8 @@ addpath(genpath('./plotj'))
 
 %% param
 subjects = {'J','W'};
-% path_data = ['C:\Jochem\Gratc_PPC_DA_new\data\processed'];
-path_data = ['/Users/jochemvankempen/NCL/gratc_DA/processed'];
+path_data = ['C:\Jochem\Gratc_PPC_DA_new\data\processed'];
+% path_data = ['/Users/jochemvankempen/NCL/gratc_DA/processed'];
 path_population = regexprep(path_data,'processed','population');
 
 if ~isfolder(path_population)
@@ -541,9 +541,9 @@ datatype = 'MI';
 
 selectivity_criterium = 'none';
 selectivity_criterium = 'att&dru';
+selectivity_criterium = 'dru';
 % selectivity_criterium = 'dru';
-% selectivity_criterium = 'dru';
-% selectivity_criterium = 'att';
+selectivity_criterium = 'att';
 
 ncol = length(label_drug);
 nrow = 2;
