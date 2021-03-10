@@ -8,7 +8,9 @@ function [trialdata, unit, idx_exclude_trials] = remove_excluded_trials(trialdat
 event_fields = fields(unit);
 event_fields = event_fields(contains(event_fields, 'Align'));
 
-idx_exclude_trials = ~unit.idx_include_trials(idx_unit,:);
+idx_exclude_trials = ...
+    ~unit.idx_include_trials(idx_unit,:) ...
+    | [trialdata.exclude];
 
 for ievent = 1:length(event_fields)
     unit.(event_fields{ievent})(:,idx_exclude_trials) = [];

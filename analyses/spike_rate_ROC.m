@@ -22,6 +22,7 @@ assert(height(recinfo)==1, 'height recInfo ~= 1')
 
 % get dimensions
 [num_unit, num_trials] = size(unit.StimAlign);
+num_group = length(unique([trialdata.group]));
 
 % compute firing rate
 rate = spike_rate(unit, time_windows, 'rate');
@@ -53,8 +54,8 @@ end
 % loop over time windows
 for itw = 1:length(timewin_fields)
     
-    [roc_attend, mi_attend] = deal(NaN(num_unit, 2, size(cond_compare,1))); % unit, drug, cond
-    [roc_drug, mi_drug] = deal(NaN(num_unit, size(cond_compare,1))); % unit, cond
+    [roc_attend, mi_attend] = deal(NaN(num_unit, 2, size(cond_compare,1)), num_group); % unit, drug, cond, group
+    [roc_drug, mi_drug] = deal(NaN(num_unit, size(cond_compare,1)), num_group); % unit, cond, group
 
     for iunit = 1:num_unit
         
@@ -64,61 +65,67 @@ for itw = 1:length(timewin_fields)
         
         idx_cond = [tmp_trialdata.cond_num]';
         idx_drug = [tmp_trialdata.drug]' + 1;
-
+        idx_group = [tmp_trialdata.group]';
+        
         % attention ROC
         for idrug = 1:2
             for icond = 1:length(cond_compare)
-                
-                % get trial indices
-                trial_index = (...
-                    idx_drug==idrug) ...
-                    & (idx_cond==cond_compare(icond,1) | idx_cond==cond_compare(icond,2));
-                
-                % define trial classes
-                class = NaN(length(trial_index),1);
-                class(idx_cond==cond_compare(icond,1)) = 1;
-                class(idx_cond==cond_compare(icond,2)) = 0;
-                
-                % ROC analysis
-                [roc_attend(iunit,idrug,icond),~,~] = ROC_area(tmp_rate(trial_index), class(trial_index));
-        
-                % attMI = (attRF - attAway) / (attRF + attAway)
-                tmp = ...
-                    ( mean(tmp_rate(trial_index & class==1)) - mean(tmp_rate(trial_index & class==0)) ) / ...
-                    ( mean(tmp_rate(trial_index & class==1)) + mean(tmp_rate(trial_index & class==0)) );
-                mi_attend(iunit,idrug,icond) = tmp;
-                
+                for igroup = 1:num_group
+                    
+                    % get trial indices
+                    trial_index = ...
+                        idx_drug==idrug ...
+                        & (idx_cond==cond_compare(icond,1) | idx_cond==cond_compare(icond,2)) ...
+                        & idx_group==igroup;
+                    
+                    % define trial classes
+                    class = NaN(length(trial_index),1);
+                    class(idx_cond==cond_compare(icond,1)) = 1;
+                    class(idx_cond==cond_compare(icond,2)) = 0;
+                    
+                    % ROC analysis
+                    [roc_attend(iunit,idrug,icond,igroup),~,~] = ROC_area(tmp_rate(trial_index), class(trial_index));
+                    
+                    % attMI = (attRF - attAway) / (attRF + attAway)
+                    tmp = ...
+                        ( mean(tmp_rate(trial_index & class==1)) - mean(tmp_rate(trial_index & class==0)) ) / ...
+                        ( mean(tmp_rate(trial_index & class==1)) + mean(tmp_rate(trial_index & class==0)) );
+                    mi_attend(iunit,idrug,icond,igroup) = tmp;
+                    
+                end
             end
         end
         
-        
         % drug ROC
         for icond = 1:length(unique(idx_cond))
-            
-            % get trial indices
-            trial_index = (idx_cond==icond);
-            
-            % define trial classes
-            class = NaN(length(trial_index),1);
-            class(idx_drug==1) = 0;
-            class(idx_drug==2) = 1;
-
-            % ROC analysis
-            [roc_drug(iunit,icond),~,~] = ROC_area(tmp_rate(trial_index), class(trial_index));
-
-            % drugMI = (drug - no drug) / (drug + no drug)
-            tmp = ...
-                ( mean(tmp_rate(trial_index & class==1)) - mean(tmp_rate(trial_index & class==0)) ) / ...
-                ( mean(tmp_rate(trial_index & class==1)) + mean(tmp_rate(trial_index & class==0)) );
-            
-            mi_drug(iunit,icond) = tmp;
-            
+            for igroup = 1:num_group
+                
+                % get trial indices
+                trial_index = ...
+                    idx_cond==icond ...
+                    & idx_group==igroup;
+                
+                % define trial classes
+                class = NaN(length(trial_index),1);
+                class(idx_drug==1) = 0;
+                class(idx_drug==2) = 1;
+                
+                % ROC analysis
+                [roc_drug(iunit,icond,igroup),~,~] = ROC_area(tmp_rate(trial_index), class(trial_index));
+                
+                % drugMI = (drug - no drug) / (drug + no drug)
+                tmp = ...
+                    ( mean(tmp_rate(trial_index & class==1)) - mean(tmp_rate(trial_index & class==0)) ) / ...
+                    ( mean(tmp_rate(trial_index & class==1)) + mean(tmp_rate(trial_index & class==0)) );
+                
+                mi_drug(iunit,icond,igroup) = tmp;
+            end
         end
         
         clear tmp*
     end
         
-    savefilename = fullfile(path_target, sprintf('rate_ROC_%s.mat', timewin_fields{itw}));
+    savefilename = fullfile(path_target, sprintf('rate_ROC_%s_%s.mat', timewin_fields{itw}, trialdata(1).group_label));
     save(savefilename, 'roc_*', 'mi_*', 'time_windows');
     
 end
