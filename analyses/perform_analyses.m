@@ -41,6 +41,16 @@ pupil_timeseries.stim = {'STIM_ON', -0.5, 501}; % event, timestamp, num_timestam
 pupil_timeseries.cue = {'CUE_ON', -0.5, 501};
 pupil_timeseries.dim = {'DIMMING1', -1.0, 301};
 
+% split up analyses for these trial groups. The indices indicate trials
+% from a block change. This is only used for:
+% - spike_rate_summary 
+% - spike_rate_ROC
+% trial_groups = [1 18; 19 inf]; 
+trial_groups = [1 Inf]; 
+
+% exclude trials with wash in/out of drug
+trial_exclusion_block_change = 0; 
+
 %% load data
 
 loadfilename = fullfile(path_data, recinfo.Subject, recinfo.Date, 'unit.mat');
@@ -49,6 +59,11 @@ loadfilename = fullfile(path_data, recinfo.Subject, recinfo.Date, 'trialdata.mat
 load(loadfilename);
 
 path_target = regexprep(path_data, 'processed', 'analysed'); % path where results are stored
+
+%% define trial groups and exclusion
+
+trialdata = define_trial_groups(trialdata, trial_groups, 'block_change');
+trialdata = define_trial_exclusion(trialdata, trial_exclusion_block_change, 'block_change');
 
 %% mean rate & FF
 

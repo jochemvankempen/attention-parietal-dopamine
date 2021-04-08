@@ -1,4 +1,4 @@
-function [population, datalist] = get_population_data(recordinglist, type, path_data, time_window)
+function [population, datalist] = get_population_data(recordinglist, type, path_data, time_window, trial_group)
 % population_data = get_population_data(recordinglist, type, path_data)
 %
 % Collect and concatenate data from individual recordings into population
@@ -61,13 +61,13 @@ switch type
         filename = sprintf('rate_PSTH.mat');
 
     case 'spike_rate_summary'
-        filename = sprintf('rate_summary_%s.mat', time_window);
+        filename = sprintf('rate_summary_%s_%s.mat', time_window, trial_group);
         
     case 'spike_rate_ANOVA'
         filename = sprintf('rate_ANOVA_%s.mat', time_window);
         
     case 'spike_rate_ROC'
-        filename = sprintf('rate_ROC_%s.mat', time_window);
+        filename = sprintf('rate_ROC_%s_%s.mat', time_window, trial_group);
    
     case 'waveform'
         filename = 'unit.mat';
@@ -132,12 +132,19 @@ for irec = 1:height(recordinglist)
             if irec==1
                 population.rate = [];
                 population.FF = [];
+                population.lm.coef = [];
+                population.lm.t = [];
+                population.lm.p = [];
+                
             end
             
             population.rate = cat(1, population.rate, loaddata.rate_cond);
             population.FF   = cat(1, population.FF, loaddata.FF_cond);
             
-            
+            population.lm.coef  = cat(1, population.lm.coef, loaddata.lm.coef);
+            population.lm.t     = cat(1, population.lm.t, loaddata.lm.tStat);
+            population.lm.p     = cat(1, population.lm.p, loaddata.lm.pValue);
+
         case 'spike_rate_ANOVA'
             
             num_unit = size(loaddata.p_anova,1);

@@ -26,6 +26,9 @@ if ~any(strcmpi(trialdata_fields, 'pupil'))
     return
 end
 
+% remove excluded trials
+trialdata([trialdata.exclude]) = [];
+
 % get metadata
 num_trial = length(trialdata);
 conditions = unique([trialdata.cond_num]);

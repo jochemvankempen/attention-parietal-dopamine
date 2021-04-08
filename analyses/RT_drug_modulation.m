@@ -16,6 +16,9 @@ function RT_drug_modulation(recinfo, trialdata, path_target)
 % check input 
 assert(height(recinfo)==1, 'height recInfo ~= 1')
 
+% remove excluded trials
+trialdata([trialdata.exclude]) = [];
+
 % get metadata
 num_trial = length(trialdata);
 conditions = unique([trialdata.cond_num]);

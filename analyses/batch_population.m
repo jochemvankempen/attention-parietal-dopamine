@@ -30,10 +30,10 @@ recordinglist = get_recordinglist(subjects, path_data);
 
 %% Get population data
 
-[rate_summary, unitlist] = get_population_data(recordinglist, 'spike_rate_summary', path_data, 'dim');
+[rate_summary, unitlist] = get_population_data(recordinglist, 'spike_rate_summary', path_data, 'dim', 'block_change(1-Inf)');
 rate_PSTH = get_population_data(recordinglist, 'spike_rate_PSTH', path_data, 'dim');
 rate_ANOVA = get_population_data(recordinglist, 'spike_rate_ANOVA', path_data, 'dim');
-rate_ROC = get_population_data(recordinglist, 'spike_rate_ROC', path_data, 'dim');
+rate_ROC = get_population_data(recordinglist, 'spike_rate_ROC', path_data, 'dim', 'block_change(1-Inf)');
 waveform = get_population_data(recordinglist, 'waveform', path_data);
 % pupil_windows = get_population_data(recordinglist, 'pupil_windows', path_data, 'stim');
 % pupil_timeseries = get_population_data(recordinglist, 'pupil_timeseries', path_data, 'stim');
@@ -163,6 +163,7 @@ fprintf('\t%d units with attentional modulation (%1.1f%%)\n', selective_attentio
 
 fprintf('DRUG\n')
 selective_drug = 0;
+selective_attdrug = 0;
 selective_interaction = 0;
 for idrug = 1:length(label_drug)
     
@@ -175,12 +176,17 @@ for idrug = 1:length(label_drug)
     selective_drug = selective_drug+length(find(unit_selectivity));
     fprintf('\t%d units modulated by %s (%1.1f%%)\n', length(find(unit_selectivity)), label_drug{idrug}, length(find(unit_selectivity))/length(find(num_drug_units))*100)
     
+    unit_selectivity = get_unit_selectivity(unitlist, rate_ANOVA.selectivity, 'att&dru',{'drug',label_drug(idrug)});
+    selective_attdrug = selective_attdrug+length(find(unit_selectivity));
+    fprintf('\t%d units modulated by attention and drug %s (%1.1f%%)\n', length(find(unit_selectivity)), label_drug{idrug}, length(find(unit_selectivity))/length(find(num_drug_units))*100)
+    
     unit_selectivity = get_unit_selectivity(unitlist, rate_ANOVA.selectivity, 'att*dru',{'drug',label_drug(idrug)});
     selective_interaction = selective_interaction+length(find(unit_selectivity));
     fprintf('\t%d units interaction with attention %s (%1.1f%%)\n', length(find(unit_selectivity)), label_drug{idrug}, length(find(unit_selectivity))/length(find(num_drug_units))*100)
 end
 fprintf('\t%d total units modulated by attention  (%1.1f%%)\n', selective_attention, selective_attention/num_units*100)
 fprintf('\t%d total units modulated by drug application  (%1.1f%%)\n', selective_drug, selective_drug/num_units*100)
+fprintf('\t%d total units modulated by drug application and attention  (%1.1f%%)\n', selective_attdrug, selective_attdrug/num_units*100)
 fprintf('\t%d total units interaction attention by drug application  (%1.1f%%)\n', selective_interaction, selective_interaction/num_units*100)
 
 %% figure 2 - plot population histogram and example unit
@@ -538,6 +544,7 @@ plotj_saveFig(savefigname, {'png', 'svg'})
 %% Attend ROC, drug/no drug, narrow/broad. DrugMI-ejecCurrent
 datatype = 'MI';
 
+idx_group = 1;
 
 selectivity_criterium = 'none';
 selectivity_criterium = 'att&dru';
@@ -583,9 +590,8 @@ for idrug = 1:length(label_drug)
         unit2plot = idx_unit & unit_class==unittype;
         unit2plot_interaction = idx_unit_interaction & unit_class==unittype;
         
-        tmp_data = squeeze(mean(rate_ROC.roc_attend(unit2plot,:,idx_attention_roc==1),3));
-
-        
+        tmp_data = squeeze(mean(rate_ROC.roc_attend(unit2plot,:,idx_attention_roc==1,idx_group),3));
+%         
         idx_interaction = unit2plot_interaction(unit2plot)+1;
         
         plotj_scatter(tmp_data, ...
@@ -619,6 +625,8 @@ for idrug = 1:length(label_drug)
         tmp_data(idx,:) = 1-tmp_data(idx,:);
 
         P_roc(idrug,unittype) = compare_means(tmp_data(:,1),tmp_data(:,2), 1, 'rank');
+
+%         P_roc(idrug,unittype) = compare_means(tmp_data(:,1),tmp_data(:,2), 1, 'rank');
 % 
         bar_data = diff(tmp_data,1,2);
         P_roc(idrug,unittype) = compare_means(bar_data,0, 1, 'rank');
@@ -1107,6 +1115,104 @@ plotj_text_emphasise(h_text_population, p_masked, 'bold', 1);
 % save
 savefigname = fullfile(path_population, sprintf('DrugResponseCurve_selection'));
 plotj_saveFig(savefigname, {'png', 'svg'})
+
+
+
+%% plot change in firing rate over the course of a block
+
+selectivity_criteria = {'none', 'att', 'dru', 'att&dru'};
+label_criteria = {'No subselection', 'Attention-selective', 'Drug-selective', {'Attention & Drug', 'selective'}};
+
+ncol = length(selectivity_criteria);
+nrow = length(label_drug);
+iplot = 0;
+
+[fH, fSet] = plotj_initFig('width', 25, 'height', 13, 'Journal',plot_conventions);
+fSet.subplotGap = fSet.subplotGap.*[1 .75];
+
+idx_subplot = [1:ncol ; (ncol+1):ncol*2];
+
+[P,h_text] = deal(zeros(length(selectivity_criteria), length(label_drug), 2)); % crit, drug, unit
+
+for icrit = 1:length(selectivity_criteria)
+    
+    selectivity_criterium = selectivity_criteria{icrit};
+    
+    data2plot = rate_summary.lm.coef(:,:,2);
+    
+    clear ax h
+    for idrug = 1:length(label_drug)
+        clear text_legend tmp_data
+        iplot=iplot+1;
+        
+        
+        ax(idrug) = subtightplot(nrow, ncol, idx_subplot(iplot), fSet.subplotGap, fSet.subplotMargin, fSet.subplotMargin);
+        if idrug==1
+            plotj_initAx(fSet);
+%             plotj_initAx(fSet, 'axlabel', icrit);
+        else
+            plotj_initAx(fSet);
+        end
+        hold on
+        
+        if idrug==1
+            % title([label_drug{idrug} label_drug_ext{idrug}], 'FontSize', fSet.Fontsize_title)
+            h_title = title(label_criteria{icrit}, 'FontSize', fSet.Fontsize_title);
+            set(h_title, 'Units', 'normalized');
+%             h_title.Position = h_title.Position+[0 0.2 0];
+        end
+        
+        idx_unit = get_unit_selectivity(unitlist, rate_ANOVA.selectivity, selectivity_criterium, {'drug',label_drug(idrug)});
+        
+        % plot per unit type
+        tmp_data{1} = data2plot(idx_unit & unit_class==1, 2);
+        tmp_data{2} = data2plot(idx_unit & unit_class==2, 2);
+        
+        plotj_hist(tmp_data, ...
+            'dataindex', unit_class(idx_unit), ...
+            'histStyle','bar');
+        
+        % stats
+        P(icrit,idrug,1) = compare_means(tmp_data{1},0, 1, 'rank');
+        P(icrit,idrug,2) = compare_means(tmp_data{2},0, 1, 'rank');
+        
+        [pstring1] = get_significance_strings(P(icrit,idrug,1), 'rounded', 0);
+        [pstring2] = get_significance_strings(P(icrit,idrug,2), 'rounded', 0);
+        
+        set(gca, 'Units', 'normalized');
+        
+        tmp_x = get(gca,'xlim');
+        tmp_y = get(gca,'ylim');
+        
+        x_pos = get_value_range(tmp_x, 0.5);
+        y_pos(1) = get_value_range(tmp_y, 0.8);
+        y_pos(2) = get_value_range(tmp_y, 0.9);
+
+        h_text(icrit,idrug,1) = text(x_pos, y_pos(1), ...
+            sprintf('%s, %s (n=%d)', pstring1, label_celltype{1}, length(find(idx_unit & unit_class==1))), ...
+            'Color', fSet.colors(1,:), 'FontSize', fSet.Fontsize_text);
+        h_text(icrit,idrug,1) = text(x_pos, y_pos(2), ...
+            sprintf('%s, %s (n=%d)', pstring2, label_celltype{2}, length(find(idx_unit & unit_class==2))), ...
+            'Color', fSet.colors(2,:), 'FontSize', fSet.Fontsize_text);
+        
+        plot([0 0], ylim, 'k', 'linew', 1)
+        
+        xlabel('beta values')
+        ylabel('count')
+    end
+    
+
+end
+
+% multiple comparison correction, individual models
+[p_fdr, p_masked] = FDR(P, 0.05);
+plotj_text_emphasise(h_text, p_masked, 'italic', 2);
+plotj_text_emphasise(h_text, p_masked, 'bold', 2);
+
+% save
+savefigname = fullfile(path_population, sprintf('block_drug_response'));
+plotj_saveFig(savefigname, {'png', 'svg'})
+
 
 %% plot behaviour
 
