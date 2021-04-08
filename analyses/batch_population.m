@@ -541,9 +541,9 @@ datatype = 'MI';
 
 selectivity_criterium = 'none';
 selectivity_criterium = 'att&dru';
-selectivity_criterium = 'dru';
 % selectivity_criterium = 'dru';
-selectivity_criterium = 'att';
+% selectivity_criterium = 'dru';
+% selectivity_criterium = 'att';
 
 ncol = length(label_drug);
 nrow = 2;
@@ -584,8 +584,6 @@ for idrug = 1:length(label_drug)
         unit2plot_interaction = idx_unit_interaction & unit_class==unittype;
         
         tmp_data = squeeze(mean(rate_ROC.roc_attend(unit2plot,:,idx_attention_roc==1),3));
-        idx = tmp_data(:,1)<0.5;
-        tmp_data(idx,:) = 1-tmp_data(idx,:);
 
         
         idx_interaction = unit2plot_interaction(unit2plot)+1;
@@ -617,6 +615,8 @@ for idrug = 1:length(label_drug)
         % att AUROC relative to 0.5
 %         tmp_data = abs(tmp_data-0.5);
 %         P_roc(idrug,unittype) = compare_means(tmp_data(:,1),tmp_data(:,2), 1, 'rank');
+        idx = tmp_data(:,1)<0.5;
+        tmp_data(idx,:) = 1-tmp_data(idx,:);
 
         P_roc(idrug,unittype) = compare_means(tmp_data(:,1),tmp_data(:,2), 1, 'rank');
 % 
@@ -651,7 +651,8 @@ for idrug = 1:length(label_drug)
     end
     
     set(h_ax_inset, 'XTick', [1 2], 'XTickLabel', label_celltype)
-    ylabel(h_ax_inset, [plotj_symbol('Delta') ' | AUROC-0.5 |'],'FontSize', fSet.Fontsize_text)
+%     ylabel(h_ax_inset, [plotj_symbol('Delta') ' | AUROC-0.5 |'],'FontSize', fSet.Fontsize_text)
+    ylabel(h_ax_inset, [plotj_symbol('Delta') ' AUROC'],'FontSize', fSet.Fontsize_text)
 
     xlabel(h_ax_subplot, 'Attention AUROC no drug','FontSize', fSet.Fontsize_text)
     if idrug==1
@@ -748,7 +749,7 @@ for idrug = 1:ncol
     end
     writetable(data_table, filename)
     
-    fprintf('Chi(%d) %1.2f, p = %1.3f\n', stats2report.deltaDF, stats2report.LRStat, stats2report.pValue)
+%     fprintf('Chi(%d) %1.2f, p = %1.3f\n', stats2report.deltaDF, stats2report.LRStat, stats2report.pValue)
     
     if any(strcmp('fit_mean', predict_data.Properties.VariableNames))
         h = plot(predict_data.x, predict_data.fit_mean, 'linewidth', fSet.LineWidth, 'color', [0.3 0.3 0.3]);
