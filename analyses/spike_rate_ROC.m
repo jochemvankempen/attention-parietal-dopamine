@@ -122,6 +122,30 @@ for itw = 1:length(timewin_fields)
             end
         end
         
+        % gain variability
+        num_cond = length(unique(idx_cond));
+        for igroup = 1:num_group
+            
+            rate_gain = zeros(2*num_cond, length(trialdata)) - 99;
+            for idrug = 1:2
+                for icond = 1:num_cond
+                    
+                    % get trial indices
+                    trial_index = ...
+                        idx_drug==idrug ...
+                        & idx_cond==icond ...
+                        & idx_group==igroup;
+                    
+                    rate_gain(icond + num_cond*(idrug-1), 1:length(find(trial_index))) = tmp_rate(trial_index);
+                    
+                    
+                end
+            end
+            
+            [gain,nlls, nlls2]=data_to_Goris_model(x)
+
+        end
+        
         clear tmp*
     end
         
