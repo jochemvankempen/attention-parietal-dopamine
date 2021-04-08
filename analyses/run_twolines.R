@@ -1,23 +1,25 @@
 # load the relevant libraries
-x<-c("tidyverse", "dplyr")
+x<-c("tidyverse", "dplyr", "filenamer", "here")
 lapply(x, function(x) {if (!require(x, character.only=T)) {install.packages(x);require(x)}})
 
 # clear all
 rm(list=ls(all=TRUE)) 
 
 # load useful functions ---------------------------------------------------
-wddir   = str_c('/Users/jochemvankempen/repositories/attention-parietal-dopamine/analyses/external/')
-source(str_c(wddir, 'twolines.R'))
+wddir = here('repositories/attention-parietal-dopamine/analyses/external/')
+source(str_c(wddir,'twolines.R'))
 
 # set files and directories
-filedir = str_c('/Users/jochemvankempen/NCL/gratc_DA/population/')
+
+filedir = here('NCL/gratc_DA/population/')
 filename = 'doseResponse_drugMI_';
 filename = 'doseResponse_attAUROC_';
 drugname = 'SCH23390'
 drugname = 'Dopamine'
 selectivity = '_none'
-selectivity = '_att&dru'
-selectivity = '_att'
+# selectivity = '_att&dru'
+# selectivity = '_att'
+# selectivity = '_dru'
 
 # load data
 populationdata = read_csv(str_c(filedir, filename, drugname, selectivity,'.csv'))

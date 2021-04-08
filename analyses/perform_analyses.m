@@ -49,7 +49,7 @@ pupil_timeseries.dim = {'DIMMING1', -1.0, 301};
 trial_groups = [1 Inf]; 
 
 % exclude trials with wash in/out of drug
-trial_exclusion_block_change = 0; 
+trial_exclusion_block_change = 2; 
 
 %% load data
 
