@@ -10,8 +10,8 @@ subjects = {'J','W'};% dopamine data
 
 %% paths
 
-% path_data = ['C:\Jochem\Gratc_PPC_DA_new\data\processed'];
-path_data = ['/Users/jochemvankempen/NCL/gratc_DA/processed'];
+path_data = ['C:\Jochem\Gratc_PPC_DA_new\data\processed'];
+% path_data = ['/Users/jochemvankempen/NCL/gratc_DA/processed'];
 
 %% addpaths
 

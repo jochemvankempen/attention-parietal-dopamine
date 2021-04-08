@@ -6,8 +6,8 @@ addpath(genpath('./plotj'))
 
 %% param
 subjects = {'J','W'};
-% path_data = ['C:\Jochem\Gratc_PPC_DA_new\data\processed'];
-path_data = ['/Users/jochemvankempen/NCL/gratc_DA/processed'];
+path_data = ['C:\Jochem\Gratc_PPC_DA_new\data\processed'];
+% path_data = ['/Users/jochemvankempen/NCL/gratc_DA/processed'];
 path_population = regexprep(path_data,'processed','population');
 
 if ~isfolder(path_population)
@@ -626,9 +626,10 @@ for idrug = 1:length(label_drug)
         
         % get data - AUROC
         tmp_data = squeeze(mean(rate_ROC.roc_attend(unit2plot,:,idx_attention_roc==1,idx_group),3));
-        % correct auroc
-        idx = tmp_data(:,1)<0.5;
-        tmp_data(idx,:) = 1-tmp_data(idx,:);
+
+%         % correct auroc
+%         idx = tmp_data(:,1)<0.5;
+%         tmp_data(idx,:) = 1-tmp_data(idx,:);
         
         idx_interaction = unit2plot_interaction(unit2plot)+1;
         
@@ -679,8 +680,8 @@ for idrug = 1:length(label_drug)
             'Color', colors(unittype,:), 'FontSize', fSet.Fontsize_ax);
         
         %%% inset
-        % att AUROC relative to 0.5
-%         tmp_data = abs(tmp_data-0.5);
+        idx = tmp_data(:,1)<0.5;
+        tmp_data(idx,:) = 1-tmp_data(idx,:);
 
         P_roc(idrug,unittype) = compare_means(tmp_data(:,1),tmp_data(:,2), 1, 'rank');
 
@@ -829,7 +830,7 @@ for idrug = 1:ncol
     end
     writetable(data_table, filename)
     
-    fprintf('Chi(%d) %1.2f, p = %1.3f\n', stats2report.deltaDF, stats2report.LRStat, stats2report.pValue)
+%     fprintf('Chi(%d) %1.2f, p = %1.3f\n', stats2report.deltaDF, stats2report.LRStat, stats2report.pValue)
     
     if any(strcmp('fit_mean', predict_data.Properties.VariableNames))
         h = plot(predict_data.x, predict_data.fit_mean, 'linewidth', fSet.LineWidth, 'color', [0.3 0.3 0.3]);
