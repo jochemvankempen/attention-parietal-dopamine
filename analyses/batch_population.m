@@ -6,8 +6,8 @@ addpath(genpath('./plotj'))
 
 %% param
 subjects = {'J','W'};
-path_data = ['C:\Jochem\Gratc_PPC_DA_new\data\processed'];
-% path_data = ['/Users/jochemvankempen/NCL/gratc_DA/processed'];
+% path_data = ['C:\Jochem\Gratc_PPC_DA_new\data\processed'];
+path_data = ['/Users/jochemvankempen/NCL/gratc_DA/processed'];
 path_population = regexprep(path_data,'processed','population');
 
 if ~isfolder(path_population)
@@ -1349,6 +1349,99 @@ savefigname = fullfile(path_population, sprintf('block_drug_response'));
 plotj_saveFig(savefigname, {'png', 'svg'})
 
 
+%% plot gain
+
+colors = get_colors('att_drug');
+
+ncol = length(label_drug);
+nrow = 1;
+
+ylim2plot = [250 550];
+
+[fH, fSet] = plotj_initFig('width', 20, 'height', 8, 'Journal',plot_conventions);
+
+clear legendText h
+for idrug = 1:ncol
+    
+    idx_rec = strcmpi(recordinglist.Drug, label_drug(idrug));
+    %
+    subtightplot(nrow, ncol, idrug, fSet.subplotGap, fSet.subplotMargin, fSet.subplotMargin)
+    plotj_initAx(fSet, 'axlabel', idrug, 'axlabelDisplacement', [0.07, 0.01]);
+    hold on
+    
+    title([label_drug{idrug} label_drug_ext{idrug}], 'FontSize', fSet.Fontsize_title)
+    
+    %%% plot errorbar
+    iattDrug = 0;
+    gain_table = [];
+    gain_mat= [];
+    colors_mat = [];
+    for iatt = 1:2
+        for idrug_in = 1:2
+            iattDrug = iattDrug+1;
+            
+            y = squeeze(rate_ROC.gain(idx_rec,idrug_in,iatt));
+            text_legend{iattDrug} = sprintf('Attend %s, Drug %s', label_attention{iatt}, label_drug_onoff{idrug_in});
+                        
+            n = length(find(idx_rec));
+            rec = (1:n)';
+            cond = repmat(iatt,n,1);
+            drug = repmat(idrug_in,n,1);
+            gain_table = [gain_table ; table(rec,y,cond,drug,'VariableNames',{'recording','RT','attention','drug'})];
+            gain_mat = [gain_mat, y];
+            colors_mat = [colors_mat ; squeeze(colors(iatt,idrug_in,:))'];
+        end
+    end
+    
+    v = violinplot(gain_mat, text_legend, 'ShowMean', true);
+    for iv = 1:length(v)
+        v(iv).ViolinColor = colors_mat(iv,:);
+    end
+        
+    %%% do stats
+    % check with linear mixed effect model
+    lme = fitlme(gain_table,['RT ~ 1 + (1|recording)']);% fit constant
+    lme2 = fitlme(gain_table,['RT ~ attention + (1|recording)']); % fit linear model with attention condition
+    lme3 = fitlme(gain_table,['RT ~ attention + drug + (1|recording)']); %  fit linear model with states
+    lme4 = fitlme(gain_table,['RT ~ attention + drug + attention:drug + (1|recording)']); % fit interaction
+    
+    [BETA,BETANAMES,STATS] = fixedEffects(lme4);
+    
+    % compare the model fits
+    comp1 = compare(lme, lme2, 'CheckNesting',true); % compare linear to constant
+    comp2 = compare(lme2, lme3, 'CheckNesting',true); %
+    comp3 = compare(lme3, lme4, 'CheckNesting',true); %
+    
+    [p_fdr, p_masked] = FDR( [comp1.pValue(2) comp2.pValue(2) comp3.pValue(2)], 0.05);
+    
+    pstring = get_significance_strings([STATS.pValue(2:end)], 'rounded', 0, 'factorstring', {'attention', 'drug', 'interaction'});
+    
+    pstring{4} = ['n = ' num2str(length(find(idx_rec)))];
+    
+    
+    % plot text indicating number of units
+    set(gca, 'Units', 'normalized');
+    
+    tmp_x = get(gca,'xlim');
+    tmp_y = get(gca,'ylim');
+    
+    x_pos = get_value_range(tmp_x, 0.1);
+    y_pos = get_value_range(tmp_y, 0.85);
+
+    text(x_pos, y_pos, pstring, 'FontSize', fSet.Fontsize_text)
+    
+    if idrug==1
+        ylabel('Reaction time (ms)', 'FontSize', fSet.Fontsize_text)
+    end
+    
+    set(gca, 'xtick', [1:4], 'xticklabel', text_legend, 'xticklabelRotation', -25)
+    
+end
+
+
+savefigname = fullfile(path_population, sprintf('gain'));
+plotj_saveFig(savefigname, {'png', 'svg'})
+
 %% plot behaviour
 
 mfactor = 1000; %multiplication_factor
@@ -1374,33 +1467,27 @@ for idrug = 1:ncol
     
     %%% plot errorbar
     iattDrug = 0;
-    RT_table = [];
+    [RT_table,RT_mat,colors_mat] = deal([]);
     for iatt = 1:2
         for idrug_in = 1:2
             iattDrug = iattDrug+1;
-            
-            x = iattDrug;
-            xjitter = (rand(length(find(idx_rec)),1)-0.5)/3;
-            y = squeeze(mean(RT.RT(idx_rec,idrug_in,idx_attention==iatt),3)) * mfactor;
-            
-            plot(x + xjitter, y, '.', ...
-                'Color', [0.2 0.2 0.2 0.5], ...
-                'MarkerSize', 10)
-            
-            h(iattDrug) = plotj_errorBar(y, 'x2plot', iattDrug);
-            h(iattDrug).FaceColor = colors(iatt,idrug_in,:);
-            h(iattDrug).FaceAlpha = 0.7;
-            
-            text_legend{iattDrug} = sprintf('Attend %s, Drug %s', label_attention{iatt}, label_drug{idrug_in});
-            
-            %             plot(iattDrug + xjitter, squeeze(allRTc2plot(:,iatt,idrug_in)), '.', 'Color', attDrugColors(iatt,idrug_in,:))
-            
+
+            y = squeeze(mean(RT.RT(idx_rec,idrug_in,idx_attention==iatt),3)) * mfactor;            
+            text_legend{iattDrug} = sprintf('Attend %s, Drug %s', label_attention{iatt}, label_drug_onoff{idrug_in});            
             n = length(find(idx_rec));
             rec = (1:n)';
             cond = repmat(iatt,n,1);
             drug = repmat(idrug_in,n,1);
             RT_table = [RT_table ; table(rec,y,cond,drug,'VariableNames',{'recording','RT','attention','drug'})];
+            RT_mat = [RT_mat, y];
+            colors_mat = [colors_mat ; squeeze(colors(iatt,idrug_in,:))'];
+
         end
+    end
+    
+    v = violinplot(RT_mat, text_legend, 'ShowMean', true);
+    for iv = 1:length(v)
+        v(iv).ViolinColor = colors_mat(iv,:);
     end
     
     %%% do stats
@@ -1422,8 +1509,19 @@ for idrug = 1:ncol
     pstring = get_significance_strings([STATS.pValue(2:end)], 'rounded', 0, 'factorstring', {'attention', 'drug', 'interaction'});
     
     pstring{4} = ['n = ' num2str(length(find(idx_rec)))];
+
+    ylim(ylim2plot)
     
-    text(0.5, 500, pstring, 'FontSize', fSet.Fontsize_text)
+    % plot text indicating number of units
+    set(gca, 'Units', 'normalized');
+    
+    tmp_x = get(gca,'xlim');
+    tmp_y = get(gca,'ylim');
+    
+    x_pos = get_value_range(tmp_x, 0.1);
+    y_pos = get_value_range(tmp_y, 0.85);
+
+    text(x_pos, y_pos, pstring, 'FontSize', fSet.Fontsize_text)
     
     if idrug==1
         ylabel('Reaction time (ms)', 'FontSize', fSet.Fontsize_text)
@@ -1431,7 +1529,6 @@ for idrug = 1:ncol
     
     set(gca, 'xtick', [1:4], 'xticklabel', text_legend, 'xticklabelRotation', -25)
     
-    ylim(ylim2plot)
 end
 
 

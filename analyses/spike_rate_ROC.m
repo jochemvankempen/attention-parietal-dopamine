@@ -46,6 +46,8 @@ switch recinfo.Task
             4 5;
             4 6;
             6 5;];
+        
+        cond_att = {[1 4], [2 3 5 6]};
                
     case 'msacc'
         error('not implemented yet')
@@ -56,7 +58,8 @@ for itw = 1:length(timewin_fields)
     
     [roc_attend, mi_attend] = deal(NaN(num_unit, 2, size(cond_compare,1)), num_group); % unit, drug, cond, group
     [roc_drug, mi_drug] = deal(NaN(num_unit, size(cond_compare,1)), num_group); % unit, cond, group
-
+    gain = NaN(num_unit, 2, length(cond_att), num_group); % unit, drug, attention_cond, group
+        
     for iunit = 1:num_unit
         
         % select only trial window for which this unit has spikes
@@ -123,26 +126,28 @@ for itw = 1:length(timewin_fields)
         end
         
         % gain variability
-        num_cond = length(unique(idx_cond));
         for igroup = 1:num_group
             
-            rate_gain = zeros(2*num_cond, length(trialdata)) - 99;
             for idrug = 1:2
-                for icond = 1:num_cond
+                for iatt = 1:length(cond_att)
                     
-                    % get trial indices
-                    trial_index = ...
-                        idx_drug==idrug ...
-                        & idx_cond==icond ...
-                        & idx_group==igroup;
-                    
-                    rate_gain(icond + num_cond*(idrug-1), 1:length(find(trial_index))) = tmp_rate(trial_index);
-                    
+                    rate_gain = zeros(length(cond_att{iatt}), length(trialdata)) - 99;
+
+                    for icond = 1:length(cond_att{iatt})
+                        % get trial indices
+                        trial_index = ...
+                            idx_drug==idrug ...
+                            & idx_cond==cond_att{iatt}(icond) ...
+                            & idx_group==igroup;
+                        
+                        rate_gain(icond, 1:length(find(trial_index))) = tmp_rate(trial_index);
+                        
+                        
+                    end
+                    [gain(iunit,idrug,iatt,igroup),nlls,nlls2]=data_to_Goris_model(rate_gain);
                     
                 end
             end
-            
-            [gain,nlls, nlls2]=data_to_Goris_model(x)
 
         end
         
@@ -150,6 +155,6 @@ for itw = 1:length(timewin_fields)
     end
         
     savefilename = fullfile(path_target, sprintf('rate_ROC_%s_%s.mat', timewin_fields{itw}, trialdata(1).group_label));
-    save(savefilename, 'roc_*', 'mi_*', 'time_windows');
+    save(savefilename, 'roc_*', 'mi_*', 'gain', 'time_windows');
     
 end
