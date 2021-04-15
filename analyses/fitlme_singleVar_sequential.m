@@ -51,8 +51,8 @@ else
 end
 
 x_range = [min(data_table.x), max(data_table.x)];
-x_range = x_range + round([-mean(x_range)/2 mean(x_range)/2]);
-predict_data = table((x_range(1):x_range(2))', 'VariableNames', {'x'});
+x_range = x_range + [-range(x_range)/2 range(x_range)/2];
+predict_data = table(linspace(x_range(1),x_range(2),100)', 'VariableNames', {'x'});
 
 if comp2.pValue < 0.05
     [~,~,STATS] = fixedEffects(lme3);    

@@ -6,8 +6,8 @@ addpath(genpath('./plotj'))
 
 %% param
 subjects = {'J','W'};
-% path_data = ['C:\Jochem\Gratc_PPC_DA_new\data\processed'];
-path_data = ['/Users/jochemvankempen/NCL/gratc_DA/processed'];
+path_data = ['C:\Jochem\Gratc_PPC_DA_new\data\processed'];
+% path_data = ['/Users/jochemvankempen/NCL/gratc_DA/processed'];
 path_population = regexprep(path_data,'processed','population');
 
 if ~isfolder(path_population)
@@ -774,7 +774,7 @@ switch datatype
 end
 
 clear ax h
-for idrug = 1:ncol
+for idrug = 1%:ncol
     clear text_legend
     iplot=iplot+1;
     
@@ -819,8 +819,12 @@ for idrug = 1:ncol
         text_legend{2} = [label_celltype{2} ' (n=' num2str(length(find(unit_class(idx_unit)==2))) ')'];
     end
     
-    data_table = table(ejection_current, data2plot(unit2plot), 'VariableNames', {'x', 'y'});
+    ejection_current_centered = ejection_current - mean(unique(ejection_current));
+    
+    data_table = table(ejection_current_centered, data2plot(unit2plot), 'VariableNames', {'x', 'y'});
     [stats2report, predict_data, stats, model] = fitlme_singleVar_sequential(data_table, 0);
+    
+    predict_data.x = predict_data.x + mean(unique(ejection_current));
     
     switch datatype
         case 'MI'
@@ -1006,10 +1010,13 @@ for icrit = 1:length(selectivity_criteria)
             text_legend{2} = [label_celltype{2} ' (n=' num2str(length(find(unit_class(idx_unit)==2))) ')'];
         end
         
-        data_table = table(ejection_current, data2plot(unit2plot), 'VariableNames', {'x', 'y'});
+        ejection_current_centered = ejection_current - mean(unique(ejection_current));
+        
+        data_table = table(ejection_current_centered, data2plot(unit2plot), 'VariableNames', {'x', 'y'});
         [stats2report, predict_data, stats, model] = fitlme_singleVar_sequential(data_table, 0);
         P(icrit,idrug) = stats2report.pValue;
-                
+        predict_data.x = predict_data.x + mean(unique(ejection_current));
+        
         switch datatype
             case 'MI'
                 filename = fullfile(path_population, sprintf('doseResponse_drugMI_%s_%s.csv', label_drug{idrug}, selectivity_criteria{icrit}));
@@ -1104,13 +1111,15 @@ for icrit = 1:length(selectivity_criteria)
     
     %%% double fit of lme
     ejection_current = nanmean(unitlist.EjectCurrent,2);
+    ejection_current_centered = ejection_current - mean(unique(ejection_current));
     idx_unit = get_unit_selectivity(unitlist, rate_ANOVA.selectivity, selectivity_criterium);
 
     tmp_unitlist = unitlist(idx_unit,:);
     idx_drug = strcmpi(tmp_unitlist.Drug, label_drug(2))+1;
     
-    data_table = table(ejection_current(idx_unit), data2plot(idx_unit), idx_drug, 'VariableNames', {'x', 'y', 'idx'});
-
+    data_table = table(ejection_current_centered(idx_unit), data2plot(idx_unit), idx_drug, 'VariableNames', {'x', 'y', 'idx'});
+    data_table.idx = categorical(data_table.idx);
+    
     switch datatype
         case 'MI'
             filename = fullfile(path_population, sprintf('doseResponse_drugMI_%s.csv', selectivity_criteria{icrit}));
@@ -1349,28 +1358,44 @@ savefigname = fullfile(path_population, sprintf('block_drug_response'));
 plotj_saveFig(savefigname, {'png', 'svg'})
 
 
-%% plot gain
+%% plot gain unit
+
+colors = get_colors('spikewidth');
+markerstyle = {'o','v'};
+
+
+idx_group = 1;
+
+selectivity_criterium = 'none';
+selectivity_criterium = 'att&dru';
+% selectivity_criterium = 'dru';
+% selectivity_criterium = 'dru';
+% selectivity_criterium = 'att';
 
 colors = get_colors('att_drug');
 
 ncol = length(label_drug);
 nrow = 1;
 
-ylim2plot = [250 550];
-
 [fH, fSet] = plotj_initFig('width', 20, 'height', 8, 'Journal',plot_conventions);
 
 clear legendText h
-for idrug = 1:ncol
+gain_table_full = [];
+
+iplot=0;
+for idrug = 1:length(label_drug)
+    iplot = iplot+1;
     
-    idx_rec = strcmpi(recordinglist.Drug, label_drug(idrug));
-    %
-    subtightplot(nrow, ncol, idrug, fSet.subplotGap, fSet.subplotMargin, fSet.subplotMargin)
-    plotj_initAx(fSet, 'axlabel', idrug, 'axlabelDisplacement', [0.07, 0.01]);
+    % unit selection
+    idx_unit = get_unit_selectivity(unitlist, rate_ANOVA.selectivity, selectivity_criterium, {'drug',label_drug(idrug)});
+    
+    % subplot axis
+    h_ax = subtightplot(nrow, ncol, iplot, fSet.subplotGap, fSet.subplotMargin, fSet.subplotMargin);
+    plotj_initAx(fSet, 'axlabel', idrug, 'axlabelDisplacement', [0.01, 0.02]);
     hold on
     
     title([label_drug{idrug} label_drug_ext{idrug}], 'FontSize', fSet.Fontsize_title)
-    
+                
     %%% plot errorbar
     iattDrug = 0;
     gain_table = [];
@@ -1379,31 +1404,38 @@ for idrug = 1:ncol
     for iatt = 1:2
         for idrug_in = 1:2
             iattDrug = iattDrug+1;
-            
-            y = squeeze(rate_ROC.gain(idx_rec,idrug_in,iatt));
             text_legend{iattDrug} = sprintf('Attend %s, Drug %s', label_attention{iatt}, label_drug_onoff{idrug_in});
+            
+            y = squeeze(rate_ROC.gain(idx_unit,idrug_in,iatt));
                         
-            n = length(find(idx_rec));
-            rec = (1:n)';
+            n = length(find(idx_unit));
+            unit = (1:n)';
             cond = repmat(iatt,n,1);
-            drug = repmat(idrug_in,n,1);
-            gain_table = [gain_table ; table(rec,y,cond,drug,'VariableNames',{'recording','RT','attention','drug'})];
+            drug = repmat(idrug_in,n,1)-1;
+            gain_table = [gain_table ; table(unit,y,cond,drug,repmat(label_drug(idrug),[n,1]),'VariableNames',{'unit','gain','attention','drug_on','drug'})];
             gain_mat = [gain_mat, y];
             colors_mat = [colors_mat ; squeeze(colors(iatt,idrug_in,:))'];
         end
     end
+
+    % define categorical variables
+    gain_table.attention = categorical(gain_table.attention);
+    gain_table.drug_on = categorical(gain_table.drug_on);
+    gain_table.drug = categorical(gain_table.drug);
+    
     
     v = violinplot(gain_mat, text_legend, 'ShowMean', true);
     for iv = 1:length(v)
         v(iv).ViolinColor = colors_mat(iv,:);
+        v(iv).ScatterPlot.SizeData = 10;
     end
         
     %%% do stats
     % check with linear mixed effect model
-    lme = fitlme(gain_table,['RT ~ 1 + (1|recording)']);% fit constant
-    lme2 = fitlme(gain_table,['RT ~ attention + (1|recording)']); % fit linear model with attention condition
-    lme3 = fitlme(gain_table,['RT ~ attention + drug + (1|recording)']); %  fit linear model with states
-    lme4 = fitlme(gain_table,['RT ~ attention + drug + attention:drug + (1|recording)']); % fit interaction
+    lme = fitlme(gain_table,['gain ~ 1 + (1|unit)']);% fit constant
+    lme2 = fitlme(gain_table,['gain ~ attention + (1|unit)']); % fit linear model with attention condition
+    lme3 = fitlme(gain_table,['gain ~ attention + drug_on + (1|unit)']); %  fit linear model with states
+    lme4 = fitlme(gain_table,['gain ~ attention + drug_on + attention:drug_on + (1|unit)']); % fit interaction
     
     [BETA,BETANAMES,STATS] = fixedEffects(lme4);
     
@@ -1416,7 +1448,7 @@ for idrug = 1:ncol
     
     pstring = get_significance_strings([STATS.pValue(2:end)], 'rounded', 0, 'factorstring', {'attention', 'drug', 'interaction'});
     
-    pstring{4} = ['n = ' num2str(length(find(idx_rec)))];
+    pstring{4} = ['n = ' num2str(length(find(idx_unit)))];
     
     
     % plot text indicating number of units
@@ -1431,17 +1463,156 @@ for idrug = 1:ncol
     text(x_pos, y_pos, pstring, 'FontSize', fSet.Fontsize_text)
     
     if idrug==1
-        ylabel('Reaction time (ms)', 'FontSize', fSet.Fontsize_text)
+        ylabel('Gain variability', 'FontSize', fSet.Fontsize_text)
     end
     
-    set(gca, 'xtick', [1:4], 'xticklabel', text_legend, 'xticklabelRotation', -25)
+    set(gca, 'xticklabelRotation', -25)
     
+    
+    if idrug>1
+        gain_table.unit = gain_table.unit + max(gain_table_full.unit);
+    end
+    gain_table_full = [gain_table_full ; gain_table];
+
+        
 end
 
 
-savefigname = fullfile(path_population, sprintf('gain'));
-plotj_saveFig(savefigname, {'png', 'svg'})
+lme1 = fitlme(gain_table_full,['gain ~ 1 + (1|unit)']);% fit constant
+lme2 = fitlme(gain_table_full,['gain ~ drug + (1|unit)']);% fit constant
+lme3 = fitlme(gain_table_full,['gain ~ drug + attention + (1|unit)']); % fit linear model with attention condition
+lme4 = fitlme(gain_table_full,['gain ~ drug + attention + drug_on + (1|unit)']); %  fit linear model with states
+lme5 = fitlme(gain_table_full,['gain ~ drug + attention + drug_on + attention:drug_on + (1|unit)']); % fit interaction
 
+[BETA,BETANAMES,STATS] = fixedEffects(lme5);
+
+% compare the model fits
+comp1 = compare(lme1, lme2, 'CheckNesting',true); % compare drug to constant
+comp2 = compare(lme2, lme3, 'CheckNesting',true); % 
+comp3 = compare(lme3, lme4, 'CheckNesting',true); %
+
+
+
+
+%% plot gain unit class
+
+colors = get_colors('spikewidth');
+markerstyle = {'o','v'};
+
+
+idx_group = 1;
+
+selectivity_criterium = 'none';
+selectivity_criterium = 'att&dru';
+% selectivity_criterium = 'dru';
+% selectivity_criterium = 'dru';
+% selectivity_criterium = 'att';
+
+colors = get_colors('att_drug');
+
+ncol = length(label_drug);
+nrow = 1;
+
+[fH, fSet] = plotj_initFig('width', 20, 'height', 8, 'Journal',plot_conventions);
+
+clear legendText h
+gain_table_full = [];
+
+iplot=0;
+for idrug = 1:length(label_drug)
+    iplot = iplot+1;
+    
+    % unit selection
+    idx_unit = get_unit_selectivity(unitlist, rate_ANOVA.selectivity, selectivity_criterium, {'drug',label_drug(idrug)});
+    
+    % subplot axis
+    h_ax = subtightplot(nrow, ncol, iplot, fSet.subplotGap, fSet.subplotMargin, fSet.subplotMargin);
+    plotj_initAx(fSet, 'axlabel', idrug, 'axlabelDisplacement', [0.01, 0.02]);
+    hold on
+    
+    title([label_drug{idrug} label_drug_ext{idrug}], 'FontSize', fSet.Fontsize_title)
+                
+    %%% plot errorbar
+    iattDrug = 0;
+    gain_table = [];
+    gain_mat= [];
+    colors_mat = [];
+    for iatt = 1:2
+        for idrug_in = 1:2
+            iattDrug = iattDrug+1;
+            text_legend{iattDrug} = sprintf('Attend %s, Drug %s', label_attention{iatt}, label_drug_onoff{idrug_in});
+            
+            for iunit = 1:length(unique(unit_class))
+                
+                
+                y = squeeze(rate_ROC.gain(idx_unit & unit_class==iunit,idrug_in,iatt));
+                
+                n = length(find(idx_unit));
+                unit = (1:n)';
+                cond = repmat(iatt,n,1);
+                drug = repmat(idrug_in,n,1)-1;
+                gain_table = [gain_table ; table(unit,y,cond,drug,repmat(label_drug(idrug),[n,1]),'VariableNames',{'unit','gain','attention','drug_on','drug'})];
+                gain_mat = [gain_mat, y];
+            end
+            colors_mat = [colors_mat ; squeeze(colors(iatt,idrug_in,:))'];
+        end
+    end
+
+    % define categorical variables
+    gain_table.attention = categorical(gain_table.attention);
+    gain_table.drug_on = categorical(gain_table.drug_on);
+    gain_table.drug = categorical(gain_table.drug);
+    
+    
+    v = violinplot(gain_mat, text_legend, 'ShowMean', true);
+    for iv = 1:length(v)
+        v(iv).ViolinColor = colors_mat(iv,:);
+        v(iv).ScatterPlot.SizeData = 10;
+    end
+        
+    %%% do stats
+    % check with linear mixed effect model
+    lme = fitlme(gain_table,['gain ~ 1 + (1|unit)']);% fit constant
+    lme2 = fitlme(gain_table,['gain ~ attention + (1|unit)']); % fit linear model with attention condition
+    lme3 = fitlme(gain_table,['gain ~ attention + drug_on + (1|unit)']); %  fit linear model with states
+    lme4 = fitlme(gain_table,['gain ~ attention + drug_on + attention:drug_on + (1|unit)']); % fit interaction
+    
+    [BETA,BETANAMES,STATS] = fixedEffects(lme4);
+    
+    % compare the model fits
+    comp1 = compare(lme, lme2, 'CheckNesting',true); % compare linear to constant
+    comp2 = compare(lme2, lme3, 'CheckNesting',true); %
+    comp3 = compare(lme3, lme4, 'CheckNesting',true); %
+    
+    [p_fdr, p_masked] = FDR( [comp1.pValue(2) comp2.pValue(2) comp3.pValue(2)], 0.05);
+    
+    pstring = get_significance_strings([STATS.pValue(2:end)], 'rounded', 0, 'factorstring', {'attention', 'drug', 'interaction'});
+    
+    pstring{4} = ['n = ' num2str(length(find(idx_unit)))];
+    
+    
+    % plot text indicating number of units
+    set(gca, 'Units', 'normalized');
+    
+    tmp_x = get(gca,'xlim');
+    tmp_y = get(gca,'ylim');
+    
+    x_pos = get_value_range(tmp_x, 0.1);
+    y_pos = get_value_range(tmp_y, 0.85);
+
+    text(x_pos, y_pos, pstring, 'FontSize', fSet.Fontsize_text)
+    
+    if idrug==1
+        ylabel('Gain variability', 'FontSize', fSet.Fontsize_text)
+    end
+    
+    set(gca, 'xticklabelRotation', -25)
+    
+    gain_table_full = [gain_table_full ; gain_table];
+
+        
+        
+end
 %% plot behaviour
 
 mfactor = 1000; %multiplication_factor
@@ -1485,6 +1656,9 @@ for idrug = 1:ncol
         end
     end
     
+    RT_table.attention = categorical(RT_table.attention);
+    RT_table.drug = categorical(RT_table.drug);
+    
     v = violinplot(RT_mat, text_legend, 'ShowMean', true);
     for iv = 1:length(v)
         v(iv).ViolinColor = colors_mat(iv,:);
@@ -1527,7 +1701,7 @@ for idrug = 1:ncol
         ylabel('Reaction time (ms)', 'FontSize', fSet.Fontsize_text)
     end
     
-    set(gca, 'xtick', [1:4], 'xticklabel', text_legend, 'xticklabelRotation', -25)
+    set(gca, 'xticklabelRotation', -25)
     
 end
 
