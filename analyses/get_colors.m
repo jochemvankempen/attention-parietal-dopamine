@@ -1,4 +1,4 @@
-function colors = get_colors(type)
+function [colors, labels, labels2] = get_colors(type)
 % colors = get_colors(type)
 %
 % Get the colors used for plotting
@@ -30,6 +30,15 @@ switch type
 %         colors(2,1,:) = [153 153 153]/255 ;
 %         colors(2,2,:) = [153 153 153]/255 ;
         
+        labels{1,1} = 'Attend RF, Drug off';
+        labels{1,2} = 'Attend RF, Drug on';
+        labels{2,1} = 'Attend away, Drug off';
+        labels{2,2} = 'Attend away, Drug on';
+        
+        labels2{1,1} = {'Attend RF','Drug off'};
+        labels2{1,2} = {'Attend RF','Drug on'};
+        labels2{2,1} = {'Attend away','Drug off'};
+        labels2{2,2} = {'Attend away','Drug on'};
         
     case 'drug'
 

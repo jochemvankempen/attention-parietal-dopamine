@@ -1,36 +1,37 @@
-function selectivity = get_unit_selectivity(unitlist, P, type, subselection, threshold)
+function selectivity = get_unit_selectivity(unitlist, type, subselection, threshold)
 
+
+% perform checks on input
 assert(istable(unitlist), 'unitlist should be a table')
-assert(istable(P), 'P should be a table')
 
-if nargin<5
+if nargin<4
     threshold = 0.05;
 end
-if nargin<4
+if nargin<3
     subselection = [];
 end
 
-selectivity = false(height(P),1);
+selectivity = false(height(unitlist),1);
 
 % define selectivity - attention
-cond1 = P.att < threshold;
-cond2 = P.("att*dir") < threshold;
-cond3 = P.("att*dru") < threshold;
-cond4 = P.("att*dru*dir") < threshold;
+cond1 = unitlist.s_att < threshold;
+cond2 = unitlist.("s_att*dir") < threshold;
+cond3 = unitlist.("s_att*dru") < threshold;
+cond4 = unitlist.("s_att*dru*dir") < threshold;
 selectivity_attention = cond1 | cond2 | cond3 | cond4;
 clear cond*
 
 % define selectivity - drug
-cond1 = P.dru < threshold;
-cond2 = P.("att*dru") < threshold;
-cond3 = P.("dru*dir") < threshold;
-cond4 = P.("att*dru*dir") < threshold;
+cond1 = unitlist.s_dru < threshold;
+cond2 = unitlist.("s_att*dru") < threshold;
+cond3 = unitlist.("s_dru*dir") < threshold;
+cond4 = unitlist.("s_att*dru*dir") < threshold;
 selectivity_drug = cond1 | cond2 | cond3 | cond4;
 clear cond*
 
 % define selectivity - att*drug
-cond1 = P.("att*dru") < threshold;
-cond2 = P.("att*dru*dir") < threshold;
+cond1 = unitlist.("s_att*dru") < threshold;
+cond2 = unitlist.("s_att*dru*dir") < threshold;
 selectivity_att_drug = cond1 | cond2;
 clear cond*
 
@@ -48,23 +49,23 @@ switch type
         idx = selectivity_drug;
         
     case 'visual'
-        idx = P.stim < threshold; % stim
+        idx = unitlist.s_stim < threshold; % stim
         
     case 'visual&att'
-        cond1 = P.stim < threshold; % stim
+        cond1 = unitlist.s_stim < threshold; % stim
         cond2 = selectivity_attention; % att
 
         idx = cond1 & cond2;
 
     case 'visual&att&dru'
-        cond1 = P.stim < threshold; % stim
+        cond1 = unitlist.s_stim < threshold; % stim
         cond2 = selectivity_attention; % att
         cond3 = selectivity_drug; % dru
         
         idx = cond1 & cond2 & cond3;
         
     case 'visual&dru'
-        cond1 = P.stim < threshold; % stim
+        cond1 = unitlist.s_stim < threshold; % stim
         cond2 = selectivity_drug; % dru
 
         idx = cond1 & cond2;
@@ -89,7 +90,7 @@ switch subselection{1}
         
     case 'drug'
         assert(iscell(subselection{2}), 'subselection{2} should be a cell')
-        idx_subselection = strcmpi(subselection{2}, unitlist.Drug);
+        idx_subselection = unitlist.Drug==subselection{2};
         
 end
 assert(length(idx_subselection)==length(selectivity), 'subselection contains incorrect number of samples')

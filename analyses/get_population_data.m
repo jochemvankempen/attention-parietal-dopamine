@@ -201,7 +201,9 @@ for irec = 1:height(recordinglist)
             datalist = [datalist; [repmat(recinfo, [num_unit,1]), table((1:num_unit)', 'VariableNames', {'unit'}) ]];
     end
     
-    total_unit = total_unit+num_unit;
+    if exist('num_unit','var')
+        total_unit = total_unit+num_unit;
+    end
 end
 
 
