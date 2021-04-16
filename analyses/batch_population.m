@@ -6,8 +6,8 @@ addpath(genpath('./plotj'))
 
 %% param
 subjects = {'J','W'};
-path_data = ['C:\Jochem\Gratc_PPC_DA_new\data\processed'];
-% path_data = ['/Users/jochemvankempen/NCL/gratc_DA/processed'];
+% path_data = ['C:\Jochem\Gratc_PPC_DA_new\data\processed'];
+path_data = ['/Users/jochemvankempen/NCL/gratc_DA/processed'];
 path_population = regexprep(path_data,'processed','population');
 
 if ~isfolder(path_population)
@@ -44,17 +44,71 @@ RT = get_population_data(recordinglist, 'RT_drug_modulation', path_data, 'stim')
 
 idx_attention = [1 2 2 1 2 2]; % cond_num mapping to attend RF/away in trialdata
 idx_attention_roc = [1 1 2 1 1 2]; % see condition comparisons in spike_rate_ROC.m
-num_units = size(waveform.waveform,1);
-num_recs = size(RT.RT,1);
-% selectivity = get_unit_selectivity(rate_ANOVA.p_anova, 'att+dru')
+num_rec = size(RT.RT,1);
+[num_unit, num_drug, num_cond] = size(rate_summary.rate);
 
 %% classify cells as narrow or broad spiking
 
 waveform_cutoff = 250;
 
-unit_class = ones(num_units,1);
+unit_class = ones(num_unit,1);
 unit_class(waveform.peak_to_trough_time > waveform_cutoff) = 2;
 
+unitlist.unit_class = unit_class;
+unitlist.unit = (1:num_unit)'; % rename units in sequential order to be able to join to later tables
+
+clear unit_class
+
+%% append/finalise unitlist
+
+
+% average over the ejection currents from both barrels
+unitlist.EjectCurrent = nanmean(unitlist.EjectCurrent,2);
+
+% append with selectivity/ANOVA table
+
+
+
+
+
+%% create population tables
+
+% number of elements in table
+t_numel = num_unit*num_drug*num_cond;
+
+% reshape matrices to single columns
+t_rate = reshape(rate_summary.rate, [t_numel, 1]);
+t_FF = reshape(rate_summary.rate, [t_numel, 1]);
+
+% create metadata columns
+[t_cond, t_att, t_att_roc] = deal(NaN(size(rate_summary.rate)));
+for i = 1:num_cond
+    t_cond(:,:,i) = i;
+    t_att(:,:,i) = idx_attention(i);
+    t_att_roc(:,:,i) = idx_attention_roc(i);
+end
+
+t_unit = (1:num_unit)';
+t_unit = repmat(t_unit, [1, num_drug, num_cond]);
+
+t_drug_on = [0 1];
+t_drug_on = repmat(t_drug_on, [num_unit, 1, num_cond]);
+
+t_unit = reshape(t_unit, [t_numel, 1]);
+t_cond = reshape(t_cond, [t_numel, 1]);
+t_drug_on = reshape(t_drug_on, [t_numel, 1]);
+
+% build table
+rate_table = table(...
+    t_unit, ...
+    t_drug_on, t_cond, t_att, t_att_roc, ...
+    t_rate, t_FF, ...
+    'VariableNames', {'unit', 'drug_on', 'cond', 'attention', 'attention_roc', 'rate', 'FF'});
+
+% join tables 
+rate_table = join(rate_table, unitlist, 'Keys', 'unit');
+
+clear t_* idx_*
 
 %% figure 1 - plot cell proportions
 
@@ -102,7 +156,7 @@ C_venn      = length(find( C    & ~(ABC | AC | BC) ));
 subtightplot(1, 1, 1, fSet.subplotGap, fSet.subplotMargin, fSet.subplotMargin)
 plotj_initAx(fSet, 'axlabel', 1);
 hold on
-bar([length(find(A)), length(find(B)), length(find(C)), length(find(interaction_selective))]/num_units)
+bar([length(find(A)), length(find(B)), length(find(C)), length(find(interaction_selective))]/num_unit)
 ylabel('Proportion of units', 'FontSize', fSet.Fontsize_text)
 xlim([0.2 4.8])
 
@@ -151,10 +205,10 @@ fprintf('\tRecorded %d/%d units from monkey 1/2\n', length(find(M1)), length(fin
 fprintf('SELECTIVITY\n')
 unit_selectivity = get_unit_selectivity(unitlist, rate_ANOVA.selectivity, 'visual');
 selective_visual = length(find(unit_selectivity));
-fprintf('\t%d units with visual response (%1.1f%%)\n', selective_visual, selective_visual/num_units*100)
+fprintf('\t%d units with visual response (%1.1f%%)\n', selective_visual, selective_visual/num_unit*100)
 unit_selectivity = get_unit_selectivity(unitlist, rate_ANOVA.selectivity, 'att');
 selective_attention = length(find(unit_selectivity));
-fprintf('\t%d units with attentional modulation (%1.1f%%)\n', selective_attention, selective_attention/num_units*100)
+fprintf('\t%d units with attentional modulation (%1.1f%%)\n', selective_attention, selective_attention/num_unit*100)
 % unit_selectivity = get_unit_selectivity(unitlist, rate_ANOVA.selectivity, 'visual&att');
 % selective_visAtt = length(find(unit_selectivity));
 %
@@ -184,10 +238,10 @@ for idrug = 1:length(label_drug)
     selective_interaction = selective_interaction+length(find(unit_selectivity));
     fprintf('\t%d units interaction with attention %s (%1.1f%%)\n', length(find(unit_selectivity)), label_drug{idrug}, length(find(unit_selectivity))/length(find(num_drug_units))*100)
 end
-fprintf('\t%d total units modulated by attention  (%1.1f%%)\n', selective_attention, selective_attention/num_units*100)
-fprintf('\t%d total units modulated by drug application  (%1.1f%%)\n', selective_drug, selective_drug/num_units*100)
-fprintf('\t%d total units modulated by drug application and attention  (%1.1f%%)\n', selective_attdrug, selective_attdrug/num_units*100)
-fprintf('\t%d total units interaction attention by drug application  (%1.1f%%)\n', selective_interaction, selective_interaction/num_units*100)
+fprintf('\t%d total units modulated by attention  (%1.1f%%)\n', selective_attention, selective_attention/num_unit*100)
+fprintf('\t%d total units modulated by drug application  (%1.1f%%)\n', selective_drug, selective_drug/num_unit*100)
+fprintf('\t%d total units modulated by drug application and attention  (%1.1f%%)\n', selective_attdrug, selective_attdrug/num_unit*100)
+fprintf('\t%d total units interaction attention by drug application  (%1.1f%%)\n', selective_interaction, selective_interaction/num_unit*100)
 
 %% figure 2 - plot population histogram and example unit
 
@@ -424,6 +478,12 @@ markerstyle = {'o','v'};
 selectivity_criterium = 'dru';
 % selectivity_criterium = 'att&dru';
 
+
+
+
+
+
+% plotting and post-hoc tests
 ncol = 2 * (length(label_drug));
 nrow = 2; % rate, FF
 
@@ -794,7 +854,7 @@ for idrug = 1%:ncol
     length(find(unit2plot))
     
     % ejectionCurrent
-    ejection_current = nanmean(unitlist.EjectCurrent(unit2plot),2);
+    ejection_current = unitlist.EjectCurrent(unit2plot);
     xlabel_event = 'Ejection Current';
     xlim2use = [17 90];
     
@@ -985,7 +1045,7 @@ for icrit = 1:length(selectivity_criteria)
         end
         
         % ejectionCurrent
-        ejection_current = nanmean(unitlist.EjectCurrent(unit2plot),2);
+        ejection_current = unitlist.EjectCurrent(unit2plot);
         xlabel_event = 'Ejection Current';
         xlim2use = [17 95];
         
@@ -1110,7 +1170,7 @@ for icrit = 1:length(selectivity_criteria)
     
     
     %%% double fit of lme
-    ejection_current = nanmean(unitlist.EjectCurrent,2);
+    ejection_current = unitlist.EjectCurrent(unit2plot);
     ejection_current_centered = ejection_current - mean(unique(ejection_current));
     idx_unit = get_unit_selectivity(unitlist, rate_ANOVA.selectivity, selectivity_criterium);
 

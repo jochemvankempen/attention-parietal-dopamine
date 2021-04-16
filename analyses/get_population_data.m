@@ -77,6 +77,7 @@ end
 
 %% load and concatenate data
 datalist = [];
+total_unit = 0;
 for irec = 1:height(recordinglist)
     
     % define info/paths/filenames for this recording
@@ -199,11 +200,21 @@ for irec = 1:height(recordinglist)
             % concatenate unitlist from recinfo
             datalist = [datalist; [repmat(recinfo, [num_unit,1]), table((1:num_unit)', 'VariableNames', {'unit'}) ]];
     end
+    
+    total_unit = total_unit+num_unit;
 end
 
 
+% append table
+switch type
+    case 'spike_rate_ANOVA'
+        
+        % replace column names
+        varnames = population.selectivity.Properties.VariableNames;
+        varnames = cellfun(@(x) (['s_' x]), varnames, 'UniformOutput', false);
+        population.selectivity.Properties.VariableNames = varnames;
+        
+        % add unit column
+        population.selectivity.unit = (1:total_unit)';
 
-
-
-
-
+end
