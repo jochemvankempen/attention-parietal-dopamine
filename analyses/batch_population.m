@@ -12,8 +12,8 @@ addpath(genpath('./repositories/plotj'))
 % Set data directories
 
 subjects = {'W','J'};
-% path_data = ['C:\Jochem\Gratc_PPC_DA_new\data\processed'];
-path_data = ['/Users/jochemvankempen/NCL/gratc_DA/processed'];
+path_data = ['C:\Jochem\Gratc_PPC_DA_new\data\processed'];
+% path_data = ['/Users/jochemvankempen/NCL/gratc_DA/processed'];
 path_population = regexprep(path_data,'processed','population');
 
 if ~isfolder(path_population)
@@ -185,7 +185,8 @@ t_FF(:,:,2) = mean(rate_summary.FF(:,:,idx_attention_cond==0),3);
 t_PSTH(:,:,1,:) = mean(rate_PSTH.samples(:,:,idx_attention_cond==1,:),3);
 t_PSTH(:,:,2,:) = mean(rate_PSTH.samples(:,:,idx_attention_cond==0,:),3);
 
-t_gain = rate_ROC.gain;
+t_gain = arrayfun(@(x)(x.rhat),rate_ROC.gv,'UniformOutput',true);
+t_gain_log = log(t_gain);
 
 % use idx_attention_roc for ROC and MI, not that this is different from the
 % other attention index.
@@ -222,6 +223,7 @@ t_FF            = reshape(t_FF, [t_numel, 1]);
 t_roc_attend    = reshape(t_roc_attend, [t_numel, 1]);
 t_mi_attend     = reshape(t_mi_attend, [t_numel, 1]);
 t_gain          = reshape(t_gain, [t_numel, 1]);
+t_gain_log      = reshape(t_gain_log, [t_numel, 1]);
 
 t_PSTH          = reshape(t_PSTH, [t_numel, length(rate_PSTH.time)]);
 
@@ -230,9 +232,9 @@ att_table = table(...
     t_unit, ...
     t_drug_on_label, t_att_label, ...
     t_rate, t_FF, ... % rate, FF
-    t_roc_attend, t_mi_attend, t_gain, ... % roc, MI, gain
+    t_roc_attend, t_mi_attend, t_gain, t_gain_log, ... % roc, MI, gain, gain_log
     t_PSTH, ... % PSTH
-    'VariableNames', {'unit', 'drug_on', 'attention', 'rate', 'FF', 'roc_attend', 'MI_attend', 'gain', 'PSTH'});
+    'VariableNames', {'unit', 'drug_on', 'attention', 'rate', 'FF', 'roc_attend', 'MI_attend', 'gain', 'gain_log', 'PSTH'});
 
 % join tables 
 att_table = join(att_table, unitlist, 'Keys', 'unit');
@@ -500,7 +502,7 @@ plotj_saveFig(savefigname, {'png', 'svg'})
 
 data2plot = {'rate'};
 % data2plot = {'FF'};
-% data2plot = {'gain'};
+data2plot = {'gain_log'};
 % data2plot = {'rate','FF'};
 
 
@@ -710,7 +712,7 @@ selectivity_criterium = 'none';
 % selectivity_criterium = 'dru';
 selectivity_criterium = 'att&dru';
 
-data2plot = {'rate', 'FF', 'gain'};
+data2plot = {'rate', 'FF', 'gain_log'};
 
 for idrug = 1:num_drug
     
@@ -740,7 +742,7 @@ end
 % data2plot = {'rate'};
 % data2plot = {'FF'};
 % data2plot = {'gain'};
-data2plot = {'rate','FF','gain'};
+data2plot = {'rate','FF','gain_log'};
 [colors_violin, labels_violin, labels_violin_short] = get_colors('att_drug');
 colors_violin = reshape(colors_violin, [4,3]);
 labels_violin = reshape(labels_violin, [4,1]);
@@ -2322,6 +2324,150 @@ for idrug = 1:length(label_drug)
         
         
 end
+
+
+%% plot gain, mean to variance relationship
+
+selectivity_criterium = 'none';
+selectivity_criterium = 'att&dru';
+% selectivity_criterium = 'dru';
+% selectivity_criterium = 'dru';
+% selectivity_criterium = 'att';
+
+[colors, labels] = get_colors('att_drug');
+
+ncol = length(label_drug);
+nrow = 1;
+
+[fH, fSet] = plotj_initFig('width', 20, 'height', 8, 'Journal',plot_conventions);
+
+clear legendText h
+gain_table_full = [];
+
+iplot=0;
+for idrug = 1:length(label_drug)
+    iplot = iplot+1;
+    
+    % unit selection
+    idx_unit = get_unit_selectivity(unitlist, selectivity_criterium, {'drug',label_drug(idrug)});
+    
+    % subplot axis
+    h_ax = subtightplot(nrow, ncol, iplot, fSet.subplotGap, fSet.subplotMargin, fSet.subplotMargin);
+    plotj_initAx(fSet, 'axlabel', idrug, 'axlabelDisplacement', [0.01, 0.02]);
+    hold on
+    
+    title([label_drug{idrug} label_drug_ext{idrug}], 'FontSize', fSet.Fontsize_title)
+
+    gv = rate_ROC.gv(idx_unit,:,:);
+    
+    for iatt = 1:2
+        for idrug_in = 1:2
+            mus = [gv(:,idrug_in,iatt).mus];
+            s2s = [gv(:,idrug_in,iatt).s2s];
+            
+            mus = mus(:);
+            s2s = s2s(:);
+                
+            % get binomial fit
+            rhat = nanmean([gv(:,idrug_in,iatt).rhat]);
+            xval = 1:max(s2s)*1.1;
+            
+            gv_pop = GainVariability;
+            gv_pop.rhat = rhat;
+            m2v = gv_pop.eval_mean2variance(xval);
+
+            % plot
+%             h(iatt,idrug_in) = plot(mus,s2s,'.','Color',colors(iatt,idrug_in,:));
+            h(iatt,idrug_in) = scatter(mus,s2s,fSet.MarkerSize*3,squeeze(colors(iatt,idrug_in,:))','filled','MarkerFaceAlpha',0.5);
+%             h(iatt,idrug_in) = scatter(mus,s2s,fSet.MarkerSize*2,squeeze(colors(iatt,idrug_in,:))','filled');
+            plot(m2v.x,m2v.y,'Color',colors(iatt,idrug_in,:),'linew',fSet.LineWidth);
+            xlim([0.8 max(s2s)*1.1])
+            ylim([0.8 max(s2s)*1.1])
+            plot([1e-10 max(s2s)*1.1],[1e-10 max(s2s)*1.1],'k','linew',1)
+            set(gca,'xscale','log','yscale','log')
+        end
+    end    
+%     legend(h(:),labels(:),'Location','SouthEast','Fontsize',fSet.Fontsize_text) 
+
+    xlabel('Mean (spikes)','FontSize',fSet.Fontsize_text)
+    if idrug==1
+        ylabel('Variance (spikes^{2})','FontSize',fSet.Fontsize_text)
+    end
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    %%% violin
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    
+    % init axes
+    pos = get(h_ax, 'Position');
+    h_ax_inset = axes('Position', [pos(1)+0.22 pos(2)+0.06 0.16 0.3]) ; % inset
+    plotj_initAx(fSet);
+    hold on
+
+    idx_unit = get_unit_selectivity(att_table, selectivity_criterium, {'drug',label_drug(idrug)});
+    num_unit_plot = length(unique(att_table.unit(idx_unit)));
+    fprintf('\t Found %d units \n',  num_unit_plot)
+            
+    % extract smaller table
+    v_att_table = att_table(idx_unit, ismember(att_table.Properties.VariableNames, {'gain_log','drug_on','attention','unit','attention_drug_on'}));
+    
+    % plot violin
+    v = violinplot(v_att_table.gain_log, v_att_table.attention_drug_on, 'ShowMean', true);
+    XTickLabel = get(gca,'XTickLabel');
+    for iv = 1:length(v)
+        v(iv).ScatterPlot.SizeData = 10;
+        idx = strcmpi(XTickLabel(iv), labels_violin);
+        v(iv).ViolinColor = colors_violin(idx,:);
+    end
+    set(gca,'XTickLabel',[])
+    h_ax_inset.XAxis.Visible = 'off'; 
+    
+    % plot lines for each unit
+    [data_x, data_y] = deal(NaN(num_unit_plot, length(length(v))));
+    for iv = 1:length(v)
+        if ~any(isnan(v_att_table.gain_log))
+            % works if data is complete
+            data_x(:,iv) = v(iv).ScatterPlot.XData;
+            data_y(:,iv) = v(iv).ScatterPlot.YData;
+        else
+            % catch if nan values are present
+            idx = strcmpi(XTickLabel(iv), labels_violin);
+            
+            idx_trial = v_att_table.attention_drug_on==labels_violin{idx};
+            data_x(:,iv) = iv;
+            data_y(:,iv) = v_att_table.gain_log(idx_trial);
+        end
+    end
+    plot(data_x', data_y', 'Color', [0.5 0.5 0.5 0.3]);
+    
+    % fit model
+    lme_population = fitlme(v_att_table,['gain_log ~ 1 + attention*drug_on + (1|unit)'],'DummyVarCoding','effects'); % fit interaction model with effect coding
+    disp(lme_population)
+    
+    coefficients = lme_population.Coefficients;
+    
+    betas = coefficients.Estimate(2:end);
+    betas_se = coefficients.SE(2:end);
+    p_val = coefficients.pValue(2:end);
+    
+    %         p_string = get_significance_strings(p_val, 'rounded', 0);
+    p_string = get_significance_strings(p_val, 'rounded', 0, 'factorstring', {'drug','att',sprintf('att%sdrug', '\times')});
+
+    % plot text
+    YLIM = get(gca,'ylim');
+    set(gca, 'ylim', YLIM .* [1 1.25])
+    
+    tmp_x = get(gca,'xlim');
+    tmp_y = get(gca,'ylim');
+    
+    x_pos = get_value_range(tmp_x, 0.95);
+    y_pos = get_value_range(tmp_y, 1.2);
+    
+    h_text = text(x_pos, y_pos, p_string,'HorizontalAlignment','right');
+    
+    ylabel('log(\sigma^{2}_G )', 'FontSize', fSet.Fontsize_text)
+
+end
+
 %% plot behaviour
 
 mfactor = 1000; %multiplication_factor

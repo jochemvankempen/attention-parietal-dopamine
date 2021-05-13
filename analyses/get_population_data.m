@@ -167,6 +167,7 @@ for irec = 1:height(recordinglist)
                 population.mi_attend = [];
                 population.mi_drug = [];
                 population.gain = [];
+                population.gv = [];
             end
             
             population.roc_attend   = cat(1, population.roc_attend, loaddata.roc_attend);
@@ -174,6 +175,7 @@ for irec = 1:height(recordinglist)
             population.mi_attend    = cat(1, population.mi_attend, loaddata.mi_attend);
             population.mi_drug      = cat(1, population.mi_drug, loaddata.mi_drug);
             population.gain         = cat(1, population.gain, loaddata.gain);
+            population.gv           = cat(1, population.gv, loaddata.gv);
             
             
         case 'waveform'

@@ -59,7 +59,9 @@ for itw = 1:length(timewin_fields)
     [roc_attend, mi_attend] = deal(NaN(num_unit, 2, size(cond_compare,1)), num_group); % unit, drug, cond, group
     [roc_drug, mi_drug] = deal(NaN(num_unit, size(cond_compare,1)), num_group); % unit, cond, group
     gain = NaN(num_unit, 2, length(cond_att), num_group); % unit, drug, attention_cond, group
-        
+    
+    gv(num_unit, 2, length(cond_att), num_group) = GainVariability();
+    
     for iunit = 1:num_unit
         
         % select only trial window for which this unit has spikes
@@ -144,7 +146,9 @@ for itw = 1:length(timewin_fields)
                         
                         
                     end
-                    [gain(iunit,idrug,iatt,igroup),nlls,nlls2]=data_to_Goris_model(rate_gain);
+                                        
+                    gv(iunit,idrug,iatt,igroup) = GainVariability(rate_gain);
+                    gv(iunit,idrug,iatt,igroup) = gv(iunit,idrug,iatt,igroup).fit;
                     
                 end
             end
@@ -155,6 +159,6 @@ for itw = 1:length(timewin_fields)
     end
         
     savefilename = fullfile(path_target, sprintf('rate_ROC_%s_%s.mat', timewin_fields{itw}, trialdata(1).group_label));
-    save(savefilename, 'roc_*', 'mi_*', 'gain', 'time_windows');
+    save(savefilename, 'roc_*', 'mi_*', 'gain', 'time_windows', 'gv');
     
 end
