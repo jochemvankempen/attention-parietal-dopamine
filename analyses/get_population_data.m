@@ -217,6 +217,6 @@ switch type
         population.selectivity.Properties.VariableNames = varnames;
         
         % add unit column
-        population.selectivity.unit = (1:total_unit)';
+        population.selectivity.unit = categorical((1:total_unit)', 'Ordinal', false); 
 
 end

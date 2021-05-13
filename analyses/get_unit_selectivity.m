@@ -71,7 +71,7 @@ switch type
         idx = cond1 & cond2;
         
     case 'none'
-        idx = true(height(P),1);
+        idx = true(height(unitlist),1);
         
     otherwise
         error('unknown type')

@@ -1,4 +1,4 @@
-function[gain,nlls, nlls2]=data_to_Goris_model(x)
+function [gain,nlls,nlls2,ps]=data_to_Goris_model(x)
 [ps, llike, pvari]= fit_Goris_model(x);
 
 Nc = size(x,1);

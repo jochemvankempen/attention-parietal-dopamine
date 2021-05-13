@@ -35,10 +35,10 @@ switch type
         labels{2,1} = 'Attend away, Drug off';
         labels{2,2} = 'Attend away, Drug on';
         
-        labels2{1,1} = {'Attend RF','Drug off'};
-        labels2{1,2} = {'Attend RF','Drug on'};
-        labels2{2,1} = {'Attend away','Drug off'};
-        labels2{2,2} = {'Attend away','Drug on'};
+        labels2{1,1} = 'RF, no drug';
+        labels2{1,2} = 'RF, drug';
+        labels2{2,1} = 'Away, no drug';
+        labels2{2,2} = 'Away, drug';
         
     case 'drug'
 

@@ -26,6 +26,6 @@ function x_pos = get_value_range(x, proportion)
 %         4.8000
 % 
 
-assert((0<=proportion) & (proportion<=1), 'proportion should be between zero and 1')
+% assert((0<=proportion) & (proportion<=1), 'proportion should be between zero and 1')
 
 x_pos = (max(x)-min(x))*proportion+min(x);
