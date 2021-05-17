@@ -2,8 +2,10 @@ function batch_analyses()
 % 
 
 %%
-addpath(genpath('C:\Jochem\repositories/attention-parietal-dopamine'))
+addpath(genpath('C:\Jochem\repositories\attention-parietal-dopamine'))
+addpath(genpath('C:\Jochem\repositories\gain-variability'))
 % addpath(genpath('/Users/jochemvankempen/repositories/attention-parietal-dopamine'))
+% addpath(genpath('/Users/jochemvankempen/repositories/gain-variability'))
 %%
 
 subjects = {'J','W'};% dopamine data

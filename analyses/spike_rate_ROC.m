@@ -133,7 +133,7 @@ for itw = 1:length(timewin_fields)
             for idrug = 1:2
                 for iatt = 1:length(cond_att)
                     
-                    rate_gain = zeros(length(cond_att{iatt}), length(trialdata)) - 99;
+                    rate_gain = cell(length(cond_att{iatt}),1);
 
                     for icond = 1:length(cond_att{iatt})
                         % get trial indices
@@ -142,11 +142,10 @@ for itw = 1:length(timewin_fields)
                             & idx_cond==cond_att{iatt}(icond) ...
                             & idx_group==igroup;
                         
-                        rate_gain(icond, 1:length(find(trial_index))) = tmp_rate(trial_index);
-                        
-                        
+                        rate_gain{icond} = tmp_rate(trial_index);
+                                                
                     end
-                                        
+                                                       
                     gv(iunit,idrug,iatt,igroup) = GainVariability(rate_gain);
                     gv(iunit,idrug,iatt,igroup) = gv(iunit,idrug,iatt,igroup).fit;
                     
