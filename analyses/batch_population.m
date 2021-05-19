@@ -79,9 +79,13 @@ unit_class(waveform.peak_to_trough_time <= waveform_cutoff) = {'Narrow'};
 unit_class(waveform.peak_to_trough_time > waveform_cutoff) = {'Broad'};
 
 % fill and define as categorical variable
+unitlist.peak_to_trough_time = waveform.peak_to_trough_time;
 unitlist.unit_class = categorical(unit_class);
+unitlist.waveform = waveform.waveform;
 
-clear unit_class
+waveform_time = waveform.time;
+
+clear waveform unit_class
 
 %% Append unitlist
 
@@ -189,6 +193,8 @@ clear t_*
 % print head
 fprintf('att_table:\n')
 disp(head(att_table))
+
+clear rate_*
 
 %% Print summary of data
 % Here we list the proportion of units that were selective for various 
@@ -581,21 +587,21 @@ subtightplot(nrow, ncol, 1, fSet.subplotGap, fSet.subplotMargin, fSet.subplotMar
 plotj_initAx(fSet, 'axlabel', 1, 'axlabelDisplacement', [0.07, 0.01]);
 hold on
 
-x = waveform.time-(7*6*5.4);
-plot(x, waveform.waveform(unitlist.unit_class=='Narrow', :)*-1, 'Color', [colors(1,:) 0.5])
-plot(x, waveform.waveform(unitlist.unit_class=='Broad', :)*-1, 'Color', [colors(2,:) 0.5])
+x = waveform_time-(7*6*5.4);
+plot(x, unitlist.waveform(unitlist.unit_class=='Narrow',:)*-1, 'Color', [colors(1,:) 0.5])
+plot(x, unitlist.waveform(unitlist.unit_class=='Broad',:)*-1, 'Color', [colors(2,:) 0.5])
 
 xlabel(['Time from peak of spike (' plotj_symbol('mu') 's)'], 'FontSize', fSet.Fontsize_text)
 ylabel(['Normalized voltage'], 'FontSize', fSet.Fontsize_text)
 
-xlim(minmax(waveform.time) + [0 -200] - 7*6*5.4 )
+xlim(minmax(waveform_time)+[0 -200]-7*6*5.4)
 axis square
 
 subtightplot(nrow, ncol, 2, fSet.subplotGap, fSet.subplotMargin, fSet.subplotMargin)
 plotj_initAx(fSet, 'axlabel', 2, 'axlabelDisplacement', [0.07, 0.01]);
 hold on
 
-h = plotj_hist({waveform.peak_to_trough_time(unitlist.unit_class=='Narrow'), waveform.peak_to_trough_time(unitlist.unit_class=='Broad')}, ...
+h = plotj_hist({unitlist.peak_to_trough_time(unitlist.unit_class=='Narrow'), unitlist.peak_to_trough_time(unitlist.unit_class=='Broad')}, ...
     'bins', binedges, ...
     'EdgeColor', colors, ...
     'histstyle', 'stairs',...
@@ -612,7 +618,7 @@ hleg.Position = hleg.Position + [0.08 0 0 0];
 % do hartigan's dip test to see whether there is a significant dip in this
 % distribution
 % [dip, p_value, xlow,xup]=HartigansDipSignifTest(allSpikeWaveform.width(idx_unit),5000);
-[dip, p_value, xlow, xup, boot_dip]=CalibratedHartigansDipSignifTest(waveform.peak_to_trough_time, 10000);
+[dip, p_value, xlow, xup, boot_dip]=CalibratedHartigansDipSignifTest(unitlist.peak_to_trough_time, 10000);
 
 
 p_string = get_significance_strings(p_value, 'round', 0);
@@ -1035,6 +1041,7 @@ plotj_saveFig(savefigname, {'png', 'svg'})
 
 datatype = 'MI';
 % datatype = 'AUROC';
+% datatype = 'gain_log';
 
 colors = get_colors('spikewidth');
 markerstyle = {'o','v'};
@@ -1204,21 +1211,39 @@ switch datatype
         ylabel2use = 'Drug modulation index';
         ylim2use = [];
     case 'AUROC'
-        data2plot = squeeze(diff(rate_ROC.roc_attend,1,2));
-        data2plot = squeeze(mean(data2plot(:,idx_attention_roc==1),2)); % average over relevant auroc conditions
         
+        % get data - AUROC
+        idx_cond = att_table.attention=='Attend RF';
+        
+        tmp_data = zeros(length(find(idx_cond))/2,1);
+        tmp_data(:,1) = att_table.roc_attend(idx_cond & att_table.drug_on=='Drug off');
+        tmp_data(:,2) = att_table.roc_attend(idx_cond & att_table.drug_on=='Drug on');
+        
+        data2plot = diff(tmp_data,1,2);
+
         iunitc = [];
         
         ylabel2use = [plotj_symbol('Delta') ' attention AUROC'];
         ylim2use = [-0.25 0.3];
+    case 'gain_log'
+        
+        
+        v_att_table = unstack(att_table, 'gain_log', {'attention_drug_on'}, 'GroupingVariables', {'unit','unit_class'}, 'VariableNamingRule', 'preserve');
+
+        % difference in attentional modulation of gain variabiliy
+        data2plot1 = (v_att_table.("Attend RF, Drug on") - v_att_table.("Attend away, Drug on")) ./ (v_att_table.("Attend RF, Drug on") + v_att_table.("Attend away, Drug on"));
+        data2plot2 = (v_att_table.("Attend RF, Drug off") - v_att_table.("Attend away, Drug off")) ./ (v_att_table.("Attend RF, Drug off") + v_att_table.("Attend away, Drug off"));
+        data2plot = data2plot1 - data2plot2;
+        iunitc=[];
+                
 end
 
 clear ax h
-for idrug = 1%:ncol
+for idrug = 1:ncol
     clear text_legend
     iplot=iplot+1;
     
-    idx_unit = get_unit_selectivity(unitlist, rate_ANOVA.selectivity, selectivity_criterium, {'drug',label_drug(idrug)});
+    idx_unit = get_unit_selectivity(unitlist, selectivity_criterium, {'drug',label_drug(idrug)});
     
     ax(idrug) = subtightplot(nrow, ncol, iplot, fSet.subplotGap, fSet.subplotMargin, fSet.subplotMargin);
     plotj_initAx(fSet, 'axlabel', iplot, 'axlabelDisplacement', [0.01, 0.02]);
@@ -1227,7 +1252,7 @@ for idrug = 1%:ncol
     title([label_drug{idrug} label_drug_ext{idrug}], 'FontSize', fSet.Fontsize_title)
     
     if ~isempty(iunitc)
-        unit2plot = idx_unit & unit_class==iunitc;
+        unit2plot = idx_unit & unitlist.unit_class==label_unitclass(iunitc);
     else
         unit2plot = idx_unit;
     end
@@ -1238,7 +1263,7 @@ for idrug = 1%:ncol
     xlabel_event = 'Ejection Current';
     xlim2use = [17 90];
     
-    if length(unique(unit_class(unit2plot)))==1
+    if length(unique(unitlist.unit_class(unit2plot)))==1
         tmp_data = [ejection_current  data2plot(unit2plot)];
         hscat = plotj_scatter(tmp_data, ...
             'markerStyle', markerstyle, 'markerSize', markersize, ...
@@ -1249,14 +1274,14 @@ for idrug = 1%:ncol
     else
         tmp_data = [ejection_current  data2plot(unit2plot)];
         hscat = plotj_scatter(tmp_data, ...
-            'dataIndex', unit_class(unit2plot), ...
+            'dataIndex', grp2idx(unitlist.unit_class(unit2plot)), ...
             'markerStyle', markerstyle, 'MarkerSize', markersize, ...
             'markerFaceColor', colors(1:2,:), 'markerFaceAlpha', [0.5 0.5], ...
             'markerEdgeColor', colors(1:2,:), 'markerEdgeAlpha', [0.5 0.5], ...
             'axislimit', [], ...
             'unityLine', 0);
-        text_legend{1} = [label_unitclass{1} ' (n=' num2str(length(find(unit_class(idx_unit)==1))) ')'];
-        text_legend{2} = [label_unitclass{2} ' (n=' num2str(length(find(unit_class(idx_unit)==2))) ')'];
+        text_legend{1} = [label_unitclass{1} ' (n=' num2str(length(find(grp2idx(unitlist.unit_class(idx_unit))==1))) ')'];
+        text_legend{2} = [label_unitclass{2} ' (n=' num2str(length(find(grp2idx(unitlist.unit_class(idx_unit))==2))) ')'];
     end
     
     ejection_current_centered = ejection_current - mean(unique(ejection_current));
@@ -1271,6 +1296,7 @@ for idrug = 1%:ncol
             filename = fullfile(path_population, sprintf('doseResponse_drugMI_%s_%s.csv', label_drug{idrug}, selectivity_criterium));
         case 'AUROC'
             filename = fullfile(path_population, sprintf('doseResponse_attAUROC_%s_%s.csv', label_drug{idrug}, selectivity_criterium));
+        case 'gain_log'
     end
     writetable(data_table, filename)
     
