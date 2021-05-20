@@ -7,13 +7,14 @@
 clear all
 addpath(genpath('./repositories/attention-parietal-dopamine'))
 addpath(genpath('./repositories/plotj'))
+addpath(genpath('./repositories/gain-variability'))
 
 %% Directories
 % Set data directories
 
 subjects = {'W','J'};
-path_data = ['C:\Jochem\Gratc_PPC_DA_new\data\processed'];
-% path_data = ['/Users/jochemvankempen/NCL/gratc_DA/processed'];
+% path_data = ['C:\Jochem\Gratc_PPC_DA_new\data\processed'];
+path_data = ['/Users/jochemvankempen/NCL/gratc_DA/processed'];
 path_population = regexprep(path_data,'processed','population');
 
 if ~isfolder(path_population)
@@ -106,7 +107,7 @@ unitlist.Subject = categorical(cellstr(unitlist.Subject), 'Ordinal', false);
 unitlist.Date = datetime(unitlist.Date, 'Format', "yyyy-MM-dd");
 
 %% Create population tables: attention
-% table for attention conditions
+% table for attention conditions, including drug on/off
 
 % number of elements in table
 t_numel = num_unit*num_drug*2;
@@ -170,7 +171,7 @@ att_table = table(...
     t_rate, t_FF, ... % rate, FF
     t_roc_attend, t_mi_attend, t_gain, t_gain_log, ... % roc, MI, gain, gain_log
     t_PSTH, ... % PSTH
-    'VariableNames', {'unit', 'drug_on', 'attention', 'rate', 'FF', 'roc_attend', 'MI_attend', 'gain', 'gain_log', 'PSTH'});
+    'VariableNames', {'unit', 'drug_on', 'attention', 'rate', 'FF', 'roc', 'MI', 'gain', 'gain_log', 'PSTH'});
 
 % join tables 
 att_table = join(att_table, unitlist, 'Keys', 'unit');
@@ -194,7 +195,56 @@ clear t_*
 fprintf('att_table:\n')
 disp(head(att_table))
 
-clear rate_*
+%% drug table
+% table for analysis results that are computed for each attention
+% condition, across drug conditions
+
+% number of elements in table
+t_numel = num_unit*2;
+
+% compute attention averages
+t_roc_drug(:,1) = mean(rate_ROC.roc_drug(:,idx_attention_cond==1),2);
+t_roc_drug(:,2) = mean(rate_ROC.roc_drug(:,idx_attention_cond==0),2);
+
+t_mi_drug(:,1) = mean(rate_ROC.mi_drug(:,idx_attention_cond==1),2);
+t_mi_drug(:,2) = mean(rate_ROC.mi_drug(:,idx_attention_cond==0),2);
+
+t_roc_drug = reshape(t_roc_drug, [t_numel, 1]);
+t_mi_drug = reshape(t_mi_drug, [t_numel, 1]);
+
+% create metadata columns
+t_unit = categorical((1:num_unit)', 'Ordinal', false); 
+t_unit = repmat(t_unit, [2, 1]);
+
+t_cond = repmat(1:2,[num_unit 1]);
+
+t_cond_label = cell(size(t_cond));
+t_cond_label(:,1) = {'Attend RF'};
+t_cond_label(:,2) = {'Attend away'};
+t_cond_label = reshape(t_cond_label, [t_numel, 1]);
+
+% build table
+drug_table = table(...
+    t_unit, ...
+    t_cond_label, ...
+    t_roc_drug, t_mi_drug, ... % roc, MI
+    'VariableNames', {'unit', 'attention', 'roc', 'MI'});
+
+% join tables 
+drug_table = join(drug_table, unitlist, 'Keys', 'unit');
+
+% define categorical variables
+drug_table.attention = categorical(drug_table.attention, 'Ordinal', false);
+
+% reorder categories to label_* order
+drug_table.attention = reordercats(drug_table.attention, label_attention);
+
+% clear temporary variables
+clear t_* rate_*
+
+% print head
+fprintf('drug_table:\n')
+disp(head(drug_table))
 
 %% Print summary of data
 % Here we list the proportion of units that were selective for various 
@@ -664,7 +714,7 @@ end
 % conditions, for broad and narrow spiking cells. We use random intercepts
 % for each unit to account for the repeated measures 
 
-data2plot = {'roc_attend','MI_attend'};
+data2plot = {'roc','MI'};
 
 for idrug = 1:num_drug
     
@@ -882,7 +932,7 @@ savefigname = fullfile(path_population, sprintf('violin_att_drug_unit'));
 plotj_saveFig(savefigname, {'png', 'svg'})
 
 
-%% 
+%% Post hoc comparisons: scatter plots and signed-rank tests
 % plotting and post-hoc tests
 ncol = 2 * (length(label_drug));
 nrow = 2; % rate, FF
@@ -1090,8 +1140,8 @@ for idrug = 1:length(label_drug)
         
         idx = unit2plot & idx_cond;
         tmp_data = zeros(length(find(idx))/2,1);
-        tmp_data(:,1) = att_table.roc_attend(idx & att_table.drug_on=='Drug off');
-        tmp_data(:,2) = att_table.roc_attend(idx & att_table.drug_on=='Drug on');
+        tmp_data(:,1) = att_table.roc(idx & att_table.drug_on=='Drug off');
+        tmp_data(:,2) = att_table.roc(idx & att_table.drug_on=='Drug on');
 
         plotj_scatter(tmp_data, ...
             'markerStyle', markerstyle, 'MarkerSize', markersize, ...
@@ -1204,7 +1254,10 @@ plotj_text_emphasise(h_text, p_masked, 'bold');
 switch datatype
     case 'MI'
         %         data2plot = rate_ROC.mi_drug(:,1);
-        data2plot = mean(rate_ROC.mi_drug,2);
+        v_drug_table = unstack(drug_table, 'MI', {'attention'}, 'GroupingVariables', {'unit','unit_class'}, 'VariableNamingRule', 'preserve');
+%         data2plot = mean(rate_ROC.mi_drug,2);
+
+        data2plot = mean([v_drug_table.("Attend RF") v_drug_table.("Attend away")],2);
         
         iunitc=[];
         
@@ -1216,8 +1269,8 @@ switch datatype
         idx_cond = att_table.attention=='Attend RF';
         
         tmp_data = zeros(length(find(idx_cond))/2,1);
-        tmp_data(:,1) = att_table.roc_attend(idx_cond & att_table.drug_on=='Drug off');
-        tmp_data(:,2) = att_table.roc_attend(idx_cond & att_table.drug_on=='Drug on');
+        tmp_data(:,1) = att_table.roc(idx_cond & att_table.drug_on=='Drug off');
+        tmp_data(:,2) = att_table.roc(idx_cond & att_table.drug_on=='Drug on');
         
         data2plot = diff(tmp_data,1,2);
 
@@ -1413,7 +1466,7 @@ for icrit = 1:length(selectivity_criteria)
             ylabel2use = 'Drug modulation index';
             ylim2use = [];
         case 'AUROC'
-            data2plot = squeeze(diff(rate_ROC.roc_attend,1,2));
+            data2plot = squeeze(diff(rate_ROC.roc,1,2));
             data2plot = squeeze(mean(data2plot(:,idx_attention_roc==1),2)); % average over relevant auroc conditions
             
             iunitc = [];
