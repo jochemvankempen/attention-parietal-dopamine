@@ -32,7 +32,7 @@ label_attention = {'Attend RF','Attend away'};
 label_drug_onoff = {'Drug on','Drug off'};
 label_unitclass = {'Narrow','Broad'};
 
-markersize = 10; % scatterplot markersize
+markersize = 15; % scatterplot markersize
 
 plot_conventions = 'Science'; % follow figure conventions from this journal
 
@@ -752,9 +752,6 @@ colors_violin = reshape(colors_violin, [4,3]);
 labels_violin = reshape(labels_violin, [4,1]);
 labels_violin_short = reshape(labels_violin_short, [4,1]);
 
-colors_scatter = get_colors('spikewidth');
-markerstyle = {'o','v'};
-
 % plotting and post-hoc tests
 ncol = num_drug*length(label_unitclass); % data2plot x unit
 nrow = length(data2plot); 
@@ -937,6 +934,8 @@ plotj_saveFig(savefigname, {'png', 'svg'})
 ncol = 2 * (length(label_drug));
 nrow = 2; % rate, FF
 
+markerstyle = {'o','v'}; 
+colors_scatter = get_colors('spikewidth');
 
 idx_subplot = [1 2 ncol+1 ncol+2 ; 3 4 ncol+3 ncol+4] ;
 idx_axlabel = [1 NaN 2 NaN ; 3 NaN 4 NaN]+2;
@@ -1087,7 +1086,7 @@ savefigname = fullfile(path_population, sprintf('mean_rate_FF_drug'));
 plotj_saveFig(savefigname, {'png', 'svg'})
 
 
-%% Attend ROC, drug/no drug, narrow/broad. DrugMI-ejecCurrent, table
+%% Attend ROC, drug/no drug, narrow/broad. DrugMI-ejecCurrent
 
 datatype = 'MI';
 % datatype = 'AUROC';
@@ -1167,7 +1166,7 @@ for idrug = 1:length(label_drug)
             label_unitclass{iunitc}, ...
             'AUROC', ...
             mean(delta_data), ...
-            std(delta_data)/sqrt(length(find(unit2plot))), ...
+            std(delta_data)/sqrt(size(tmp_data,1)), ...
             p_string, ...
             d)
 
@@ -1179,7 +1178,7 @@ for idrug = 1:length(label_drug)
         y_pos = get_value_range(tmp_y, 0.95 - 0.07 * (iunitc-1));
         
         h_text(idrug,iunitc) = text(x_pos, y_pos, ...
-            sprintf('%s, %s (n=%d)', p_string, label_unitclass{iunitc}, length(find(unit2plot))), ...
+            sprintf('%s, %s (n=%d)', p_string, label_unitclass{iunitc}, size(tmp_data,1)), ...
             'Color', colors(iunitc,:), 'FontSize', fSet.Fontsize_ax);
         %% inset
 
@@ -1218,7 +1217,7 @@ for idrug = 1:length(label_drug)
             label_unitclass{iunitc}, ...
             'AUROC', ...
             mean(delta_data), ...
-            std(delta_data)/sqrt(length(find(unit2plot))), ...
+            std(delta_data)/sqrt(size(tmp_data,1)), ...
             p_string, ...
             d)
 
