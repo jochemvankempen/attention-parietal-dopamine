@@ -13,8 +13,8 @@ addpath(genpath('./repositories/gain-variability'))
 % Set data directories
 
 subjects = {'W','J'};
-% path_data = ['C:\Jochem\Gratc_PPC_DA_new\data\processed'];
-path_data = ['/Users/jochemvankempen/NCL/gratc_DA/processed'];
+path_data = ['C:\Jochem\Gratc_PPC_DA_new\data\processed'];
+% path_data = ['/Users/jochemvankempen/NCL/gratc_DA/processed'];
 path_population = regexprep(path_data,'processed','population');
 
 if ~isfolder(path_population)
@@ -95,6 +95,7 @@ unitlist.unit = categorical((1:num_unit)', 'Ordinal', false);
 
 % average over the ejection currents from both barrels
 unitlist.EjectCurrent = nanmean(unitlist.EjectCurrent,2);
+unitlist.EjectCurrent_centered = unitlist.EjectCurrent - mean(unique(unitlist.EjectCurrent));
 
 % append/join with selectivity/ANOVA table
 unitlist = join(unitlist, rate_ANOVA.selectivity, 'Keys', 'unit');
@@ -197,7 +198,8 @@ disp(head(att_table))
 
 %% drug table
 % table for analysis results that are computed for each attention
-% condition, across drug conditions
+% condition, across drug conditions. There are thus no separate drug_on
+% conditions in this table.
 
 % number of elements in table
 t_numel = num_unit*2;
@@ -1241,6 +1243,8 @@ for idrug = 1:length(label_drug)
         ylabel(h_ax_subplot, 'Attention AUROC drug','FontSize', fSet.Fontsize_text)
     end
 end
+
+% FDR correction
 [p_fdr, p_masked] = FDR(P, 0.05);
 [p_fdr, p_masked_corr] = FDR(P_roc, 0.05);
 
@@ -1254,9 +1258,9 @@ switch datatype
     case 'MI'
         %         data2plot = rate_ROC.mi_drug(:,1);
         v_drug_table = unstack(drug_table, 'MI', {'attention'}, 'GroupingVariables', {'unit','unit_class'}, 'VariableNamingRule', 'preserve');
-%         data2plot = mean(rate_ROC.mi_drug,2);
+        data2plot = mean(rate_ROC.mi_drug,2);
 
-        data2plot = mean([v_drug_table.("Attend RF") v_drug_table.("Attend away")],2);
+%         data2plot = mean([v_drug_table.("Attend RF") v_drug_table.("Attend away")],2);
         
         iunitc=[];
         
@@ -1311,12 +1315,11 @@ for idrug = 1:ncol
     length(find(unit2plot))
     
     % ejectionCurrent
-    ejection_current = unitlist.EjectCurrent(unit2plot);
     xlabel_event = 'Ejection Current';
     xlim2use = [17 90];
     
     if length(unique(unitlist.unit_class(unit2plot)))==1
-        tmp_data = [ejection_current  data2plot(unit2plot)];
+        tmp_data = [unitlist.EjectCurrent(unit2plot)  data2plot(unit2plot)];
         hscat = plotj_scatter(tmp_data, ...
             'markerStyle', markerstyle, 'markerSize', markersize, ...
             'markerFaceColor', colors(iunitc,:), 'markerFaceAlpha', 0.5, ...
@@ -1324,7 +1327,7 @@ for idrug = 1:ncol
             'unityLine', 0);
         text_legend{1} = [label_unitclass{iunitc} ' (n=' num2str(length(find(unit_class(idx_unit)==iunitc))) ')'];
     else
-        tmp_data = [ejection_current  data2plot(unit2plot)];
+        tmp_data = [unitlist.EjectCurrent(unit2plot)  data2plot(unit2plot)];
         hscat = plotj_scatter(tmp_data, ...
             'dataIndex', grp2idx(unitlist.unit_class(unit2plot)), ...
             'markerStyle', markerstyle, 'MarkerSize', markersize, ...
@@ -1335,13 +1338,11 @@ for idrug = 1:ncol
         text_legend{1} = [label_unitclass{1} ' (n=' num2str(length(find(grp2idx(unitlist.unit_class(idx_unit))==1))) ')'];
         text_legend{2} = [label_unitclass{2} ' (n=' num2str(length(find(grp2idx(unitlist.unit_class(idx_unit))==2))) ')'];
     end
-    
-    ejection_current_centered = ejection_current - mean(unique(ejection_current));
-    
-    data_table = table(ejection_current_centered, data2plot(unit2plot), 'VariableNames', {'x', 'y'});
+        
+    data_table = table(unitlist.EjectCurrent_centered(unit2plot), data2plot(unit2plot), 'VariableNames', {'x', 'y'});
     [stats2report, predict_data, stats, model] = fitlme_singleVar_sequential(data_table, 0);
     
-    predict_data.x = predict_data.x + mean(unique(ejection_current));
+    predict_data.x = predict_data.x + mean(unique(unitlist.EjectCurrent));
     
     switch datatype
         case 'MI'
@@ -1449,37 +1450,47 @@ fSet.subplotGap = fSet.subplotGap.*[1 .75];
 idx_subplot = [1:ncol ; (ncol+1):ncol*2; (ncol*2+1):ncol*3];
 %% drugMI/attAUROC against ejection current
 
+switch datatype
+    case 'MI'
+        v_drug_table = unstack(drug_table, 'MI', {'attention'}, 'GroupingVariables', {'unit','unit_class'}, 'VariableNamingRule', 'preserve');
+        data2plot = mean([v_drug_table.("Attend RF") v_drug_table.("Attend away")],2);
+        
+        iunitc=[];
+        
+        ylabel2use = 'Drug modulation index';
+        ylim2use = [];
+    case 'AUROC'
+%         data2plot = squeeze(diff(rate_ROC.roc,1,2));
+%         data2plot = squeeze(mean(data2plot(:,idx_attention_roc==1),2)); % average over relevant auroc conditions
+
+        idx_cond = att_table.attention=='Attend RF';
+        
+        tmp_data = zeros(length(find(idx_cond))/2,1);
+        tmp_data(:,1) = att_table.roc(idx_cond & att_table.drug_on=='Drug off');
+        tmp_data(:,2) = att_table.roc(idx_cond & att_table.drug_on=='Drug on');
+        
+        data2plot = diff(tmp_data,1,2);
+        
+        
+        iunitc = [];
+        
+        ylabel2use = [plotj_symbol('Delta') ' attention AUROC'];
+        ylim2use = [-0.25 0.3];
+end
+
+
 [P,h_text] = deal(zeros(length(selectivity_criteria), length(label_drug)));
 [P_population,h_text_population] = deal(zeros(length(selectivity_criteria),1));
 for icrit = 1:length(selectivity_criteria)
     
     selectivity_criterium = selectivity_criteria{icrit};
-    
-    switch datatype
-        case 'MI'
-            %         data2plot = rate_ROC.mi_drug(:,1);
-            data2plot = mean(rate_ROC.mi_drug,2);
-            
-            iunitc=[];
-            
-            ylabel2use = 'Drug modulation index';
-            ylim2use = [];
-        case 'AUROC'
-            data2plot = squeeze(diff(rate_ROC.roc,1,2));
-            data2plot = squeeze(mean(data2plot(:,idx_attention_roc==1),2)); % average over relevant auroc conditions
-            
-            iunitc = [];
-            
-            ylabel2use = [plotj_symbol('Delta') ' attention AUROC'];
-            ylim2use = [-0.25 0.3];
-    end
-    
+        
     clear ax h
     for idrug = 1:length(label_drug)
         clear text_legend
         iplot=iplot+1;
         
-        idx_unit = get_unit_selectivity(unitlist, rate_ANOVA.selectivity, selectivity_criterium, {'drug',label_drug(idrug)});
+        idx_unit = get_unit_selectivity(unitlist, selectivity_criterium, {'drug',label_drug(idrug)});
         
         ax(idrug) = subtightplot(nrow, ncol, idx_subplot(iplot), fSet.subplotGap, fSet.subplotMargin, fSet.subplotMargin);
         if idrug==1
@@ -1496,18 +1507,17 @@ for icrit = 1:length(selectivity_criteria)
             h_title.Position = h_title.Position+[0 0.2 0];
         end
         if ~isempty(iunitc)
-            unit2plot = idx_unit & unit_class==iunitc;
+            unit2plot = idx_unit & unitlist.unit_class==label_unitclass{iunitc};
         else
             unit2plot = idx_unit;
         end
         
         % ejectionCurrent
-        ejection_current = unitlist.EjectCurrent(unit2plot);
         xlabel_event = 'Ejection Current';
         xlim2use = [17 95];
         
-        if length(unique(unit_class(unit2plot)))==1
-            tmp_data = [ejection_current  data2plot(unit2plot)];
+        if length(unique(unitlist.unit_class(unit2plot)))==1
+            tmp_data = [unitlist.EjectCurrent(unit2plot)  data2plot(unit2plot)];
             hscat = plotj_scatter(tmp_data, ...
                 'markerStyle', {'.'}, 'markerSize', markersize, ...
                 'markerFaceColor', colors(iunitc,:), 'markerFaceAlpha', 0.5, ...
@@ -1515,24 +1525,21 @@ for icrit = 1:length(selectivity_criteria)
                 'unityLine', 0);
             text_legend{1} = [label_unitclass{iunitc} ' (n=' num2str(length(find(unit_class(idx_unit)==iunitc))) ')'];
         else
-            tmp_data = [ejection_current  data2plot(unit2plot)];
+            tmp_data = [unitlist.EjectCurrent(unit2plot)  data2plot(unit2plot)];
             hscat = plotj_scatter(tmp_data, ...
-                'dataIndex', unit_class(unit2plot), ...
+                'dataIndex', grp2idx(unitlist.unit_class(unit2plot)), ...
                 'markerStyle', {'o','o'}, 'MarkerSize', markersize, ...
                 'markerFaceColor', colors(1:2,:), 'markerFaceAlpha', [0.5 0.5], ...
                 'markerEdgeColor', colors(1:2,:), 'markerEdgeAlpha', [0.5 0.5], ...
                 'axislimit', [], ...
                 'unityLine', 0);
-            text_legend{1} = [label_unitclass{1} ' (n=' num2str(length(find(unit_class(idx_unit)==1))) ')'];
-            text_legend{2} = [label_unitclass{2} ' (n=' num2str(length(find(unit_class(idx_unit)==2))) ')'];
+            text_legend{1} = [label_unitclass{1} ' (n=' num2str(length(find(unitlist.unit_class(idx_unit)==label_unitclass(1)))) ')'];
+            text_legend{2} = [label_unitclass{2} ' (n=' num2str(length(find(unitlist.unit_class(idx_unit)==label_unitclass(2)))) ')'];
         end
-        
-        ejection_current_centered = ejection_current - mean(unique(ejection_current));
-        
-        data_table = table(ejection_current_centered, data2plot(unit2plot), 'VariableNames', {'x', 'y'});
+                
+        data_table = table(unitlist.EjectCurrent(unit2plot), data2plot(unit2plot), 'VariableNames', {'x', 'y'});
         [stats2report, predict_data, stats, model] = fitlme_singleVar_sequential(data_table, 0);
         P(icrit,idrug) = stats2report.pValue;
-        predict_data.x = predict_data.x + mean(unique(ejection_current));
         
         switch datatype
             case 'MI'
@@ -1623,17 +1630,14 @@ for icrit = 1:length(selectivity_criteria)
         h_text(icrit,idrug) = text(x_pos, y_pos, {betaString, pstring_chi}, 'fontsize', fSet.Fontsize_text, 'color', [0.3 0.3 0.3]);
         
     end
-%% double fit of lme
+%% 'double' fit of lme
 
-    ejection_current = unitlist.EjectCurrent(unit2plot);
-    ejection_current_centered = ejection_current - mean(unique(ejection_current));
-    idx_unit = get_unit_selectivity(unitlist, rate_ANOVA.selectivity, selectivity_criterium);
-
-    tmp_unitlist = unitlist(idx_unit,:);
-    idx_drug = strcmpi(tmp_unitlist.Drug, label_drug(2))+1;
+    idx_unit = get_unit_selectivity(unitlist, selectivity_criterium);
     
-    data_table = table(ejection_current_centered(idx_unit), data2plot(idx_unit), idx_drug, 'VariableNames', {'x', 'y', 'idx'});
-    data_table.idx = categorical(data_table.idx);
+    % use mean centered ejection current to decorrelate it from the linear
+    % term. Scale to make it more stable. 
+    ejection_current = unitlist.EjectCurrent_centered / norm(unitlist.EjectCurrent_centered); % scale
+    data_table = table(ejection_current(idx_unit), data2plot(idx_unit), unitlist.Drug(idx_unit), 'VariableNames', {'x', 'y', 'drug'});
     
     switch datatype
         case 'MI'
@@ -1643,76 +1647,75 @@ for icrit = 1:length(selectivity_criteria)
     end
     writetable(data_table, filename);
     
+%     idxdrug = find(strcmpi(label_drug, 'SCH23390'));
+    idx_SCH23390 = data_table.drug=='SCH23390';
     
     data_table.polyx1 = data_table.x;
     data_table.polyx2 = data_table.x.^2;
     
     data_table.mixed_poly = data_table.polyx1;
-    data_table.mixed_poly(idx_drug==1) = data_table.polyx2(idx_drug==1);
-    
-    
-%     lme1 = fitlme(data_table,['y ~ 1 + (1|idx)']);% fit constant
-%     lme2 = fitlme(data_table,['y ~ 1 + polyx1 + (1|idx)']); % fit linear model
-%     lme3 = fitlme(data_table,['y ~ 1 + polyx1 + (polyx1|idx)']); % fit linear model
-%     lme4 = fitlme(data_table,['y ~ 1 + polyx1 + polyx2 + (polyx1|idx)']); % fit quadratic model (this includes the linear model), note this doesn't have orthogonal contrasts!!    
-%     lme4 = fitlme(data_table,['y ~ 1 + polyx1 + polyx2 + mixed_poly + (1|idx)']); % fit mixed linear/quadratic coefficients
-    
+    data_table.mixed_poly(~idx_SCH23390) = data_table.polyx2(~idx_SCH23390);    
 
-    % test interaction between drug idx and linear ejection current
-    fprintf('\nInteraction model: linear \n')
-    lme1 = fitlme(data_table,['y ~ 1 + (1|idx)']);% fit constant
-    lme2 = fitlme(data_table,['y ~ 1 + polyx1 + (1|idx)']); % fit linear model
-    lme3 = fitlme(data_table,['y ~ 1 + polyx1 + polyx1*idx + (1|idx)']); % fit interaction model
-    lme_li = lme3;
-    
-    comp1 = compare(lme1, lme2, 'CheckNesting',true); % compare linear to constant
-    comp2 = compare(lme2, lme3, 'CheckNesting',true); % compare linear to constant
-    
-    fprintf('\t Linear: Chi(%d) %1.2f, p = %1.3f\n', 1, comp1.LRStat(2), comp1.pValue(2))
-    fprintf('\t Interaction: Chi(%d) %1.2f, p = %1.3f\n', 1, comp2.LRStat(2), comp2.pValue(2))
-    
-    
-    % test random slopes model between drug idx and linear ejection current
-    fprintf('\nRandom slopes model: linear \n')
-    lme1 = fitlme(data_table,['y ~ 1 + (1|idx)']);% fit constant
-    lme2 = fitlme(data_table,['y ~ 1 + polyx1 + (1|idx)']); % fit linear model
-    lme3 = fitlme(data_table,['y ~ 1 + polyx1 + (polyx1|idx)']); % fit random slopes model
-    
-    comp1 = compare(lme1, lme2, 'CheckNesting',true); % compare linear to constant
-    comp2 = compare(lme2, lme3, 'CheckNesting',true); % compare linear to constant
-    
-    fprintf('\t Linear: Chi(%d) %1.2f, p = %1.3f\n', 1, comp1.LRStat(2), comp1.pValue(2))
-    fprintf('\t Interaction: Chi(%d) %1.2f, p = %1.3f\n', 1, comp2.LRStat(2), comp2.pValue(2))
-    
-
-    % test interaction between drug idx and quadratic ejection current
-    fprintf('\nInteraction model: quadratic \n')
-    lme1 = fitlme(data_table,['y ~ 1 + (1|idx)']);% fit constant
-    lme2 = fitlme(data_table,['y ~ 1 + polyx1 + (1|idx)']); % fit linear model
-    lme3 = fitlme(data_table,['y ~ 1 + polyx1 + polyx2 + (1|idx)']); % fit quadratic model (this includes the linear model), note this doesn't have orthogonal contrasts!!    
-    lme4 = fitlme(data_table,['y ~ 1 + polyx1 + polyx2 + polyx2*idx + (1|idx)']); % fit interaction model
-    lme_qi = lme4;
-    
-    comp1 = compare(lme1, lme2, 'CheckNesting',true); % compare linear to constant
-    comp2 = compare(lme2, lme3, 'CheckNesting',true); % compare linear to constant
-    comp3 = compare(lme3, lme4, 'CheckNesting',true); % compare linear to constant
-    
-    fprintf('\t Linear: Chi(%d) %1.2f, p = %1.3f\n', 1, comp1.LRStat(2), comp1.pValue(2))
-    fprintf('\t Quadratic: Chi(%d) %1.2f, p = %1.3f\n', 1, comp2.LRStat(2), comp2.pValue(2))
-    fprintf('\t Interaction: Chi(%d) %1.2f, p = %1.3f\n', 1, comp3.LRStat(2), comp3.pValue(2))
-
+    try
+        % test interaction between drug idx and linear ejection current
+        fprintf('\nInteraction model: linear \n')
+        lme1 = fitlme(data_table,['y ~ 1 + (1|drug)']);% fit constant
+        lme2 = fitlme(data_table,['y ~ 1 + polyx1 + (1|drug)']); % fit linear model
+        lme3 = fitlme(data_table,['y ~ 1 + polyx1 + polyx1*drug + (1|drug)']); % fit interaction model
+        lme_li = lme3;
+        
+        comp1 = compare(lme1, lme2, 'CheckNesting',true); % compare constant to linear
+        comp2 = compare(lme2, lme3, 'CheckNesting',true); % compare linear to interaction
+        
+        fprintf('\t Linear: Chi(%d) %1.2f, p = %1.3f\n', 1, comp1.LRStat(2), comp1.pValue(2))
+        fprintf('\t Interaction: Chi(%d) %1.2f, p = %1.3f\n', 1, comp2.LRStat(2), comp2.pValue(2))
+        
+        
+        % test random slopes model between drug idx and linear ejection current
+        fprintf('\nRandom slopes model: linear \n')
+        lme1 = fitlme(data_table,['y ~ 1 + (1|drug)']);% fit constant
+        lme2 = fitlme(data_table,['y ~ 1 + polyx1 + (1|drug)']); % fit linear model
+        lme3 = fitlme(data_table,['y ~ 1 + polyx1 + (polyx1|drug)']); % fit random slopes model
+        
+        comp1 = compare(lme1, lme2, 'CheckNesting',true); % compare constant to linear
+        comp2 = compare(lme2, lme3, 'CheckNesting',true); % compare linear to random slopes
+        
+        fprintf('\t Linear: Chi(%d) %1.2f, p = %1.3f\n', 1, comp1.LRStat(2), comp1.pValue(2))
+        fprintf('\t Interaction: Chi(%d) %1.2f, p = %1.3f\n', 1, comp2.LRStat(2), comp2.pValue(2))
+        
+        
+        % test interaction between drug idx and quadratic ejection current
+        fprintf('\nInteraction model: quadratic \n')
+        lme1 = fitlme(data_table,['y ~ 1 + (1|drug)']);% fit constant
+        lme2 = fitlme(data_table,['y ~ 1 + polyx1 + (1|drug)']); % fit linear model
+        lme3 = fitlme(data_table,['y ~ 1 + polyx1 + polyx2 + (1|drug)']); % fit quadratic model (this includes the linear model)
+        lme4 = fitlme(data_table,['y ~ 1 + polyx1 + polyx2 + polyx2*drug + (1|drug)']); % fit interaction model
+        lme_qi = lme4;
+        
+        comp1 = compare(lme1, lme2, 'CheckNesting',true); % compare constant to linear
+        comp2 = compare(lme2, lme3, 'CheckNesting',true); % compare linear to quadratic
+        comp3 = compare(lme3, lme4, 'CheckNesting',true); % compare quadratic to interaction
+        
+        fprintf('\t Linear: Chi(%d) %1.2f, p = %1.3f\n', 1, comp1.LRStat(2), comp1.pValue(2))
+        fprintf('\t Quadratic: Chi(%d) %1.2f, p = %1.3f\n', 1, comp2.LRStat(2), comp2.pValue(2))
+        fprintf('\t Interaction: Chi(%d) %1.2f, p = %1.3f\n', 1, comp3.LRStat(2), comp3.pValue(2))
+    catch
+        lme_li = fitlme(data_table,['y ~ 1 + polyx1 + polyx1*drug + (1|drug)']); % fit linear interaction model
+        lme_qi = fitlme(data_table,['y ~ 1 + polyx1 + polyx2 + polyx2*drug + (1|drug)']); % fit quadratic interaction model
+        warning('Could not fit all the different model types. Likely because later models had lower LL compared to earlier models')
+    end
     
     % test mixed polynomial model
     fprintf('\nMixed-polynomial model \n')
-    lme1 = fitlme(data_table,['y ~ 1 + (1|idx)']);% fit constant
-    lme2 = fitlme(data_table,['y ~ 1 + polyx1 + (1|idx)']); % fit linear model
-    lme3 = fitlme(data_table,['y ~ 1 + polyx1 + polyx2 + (1|idx)']); % fit quadratic model (this includes the linear model), note this doesn't have orthogonal contrasts!!    
-    lme4 = fitlme(data_table,['y ~ 1 + polyx1 + polyx2 + mixed_poly + (1|idx)']); % fit mixed linear/quadratic coefficients
-
+    lme1 = fitlme(data_table,['y ~ 1 + (1|drug)']);% fit constant
+    lme2 = fitlme(data_table,['y ~ 1 + polyx1 + (1|drug)']); % fit linear model
+    lme3 = fitlme(data_table,['y ~ 1 + polyx1 + polyx2 + (1|drug)']); % fit quadratic model (this includes the linear model)  
+    lme4 = fitlme(data_table,['y ~ 1 + polyx1 + polyx2 + mixed_poly + (1|drug)']); % fit mixed linear/quadratic coefficients
+    
     % compare the model fits
-    comp1 = compare(lme1, lme2, 'CheckNesting',true); % compare linear to constant
-    comp2 = compare(lme2, lme3, 'CheckNesting',true); % compare linear to constant
-    comp3 = compare(lme3, lme4, 'CheckNesting',true); % compare linear to constant
+    comp1 = compare(lme1, lme2, 'CheckNesting',true); % compare constant to linear 
+    comp2 = compare(lme2, lme3, 'CheckNesting',true); % compare linear to quadratic
+    comp3 = compare(lme3, lme4, 'CheckNesting',true); % compare quadratic to mixed
     
     P_population(icrit) = comp3.pValue(2);
         
@@ -1723,6 +1726,8 @@ for icrit = 1:length(selectivity_criteria)
 
     
     % compare mixed model to linear and quadratic interaction models
+    fprintf('\nlinear interaction - quadratic interaction \n')
+    comp_li_mixed = compare(lme_li, lme_qi)    
     fprintf('\nMixed-polynomial model - linear interaction \n')
     comp_li_mixed = compare(lme4, lme_li)
     fprintf('\nMixed-polynomial model - quadratic interaction \n')
