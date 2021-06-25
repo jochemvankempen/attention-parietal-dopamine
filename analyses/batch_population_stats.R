@@ -11,12 +11,15 @@ dependent_variables = c('rate','FF','gain_log')
 # define function to call Rmd script
 render_one <- function(drugname,dependent_variable) {
 
-  rmarkdown::render(
-    "population_stats.Rmd",
-    output_format = "github_document",
-    output_file = paste0('population_stats','-',drugname,'-',dependent_variable,'.md'),
-    params = list("drugname"=drugname, "dependent_variable"=dependent_variable),
-    envir = new.env()
+  # Run markdown in new session with specific input defined in params
+  xfun::Rscript_call(
+    rmarkdown::render,
+    list(input="population_stats.Rmd",
+         output_format = "github_document",
+         output_file = paste0('../results/','population_stats','-',drugname,'-',dependent_variable,'.md'),    
+         params = list("drugname"=drugname, "dependent_variable"=dependent_variable),
+         envir = new.env()
+         )
     )
 }
 

@@ -30,9 +30,9 @@ Application of mixed effect models to test the relationship between attention, d
 x<-c("tidyverse","dplyr","lme4","lmerTest","MASS","pbkrtest","parallel","MuMIn","varhandle")
 lapply(x, function(x) {if (!require(x, character.only=T)) {install.packages(x);require(x)}})
 
-# remove unnecessary variables
-rm.all.but(keep=c("params"), envir=.GlobalEnv, keep_functions=TRUE, gc_limit=100,
-           regex="auto")
+# # remove unnecessary variables
+# rm.all.but(keep=c("params"), envir=.GlobalEnv, keep_functions=TRUE, gc_limit=100,
+#            regex="auto")
 ```
 ## Params
 ```{r print params, results='hold', collapse=TRUE}
@@ -107,6 +107,17 @@ model.att_drug_unitc <- update(model.att_unitc, .~. + attention*drug_on*unit_cla
 
 summary(model.att_drug_unitc)
 ```
+<!-- ### stepwise regression -->
+<!-- Because some variables could be correlated, we used an algorithm for forward/backward step- wise model selection (Venables WN, Ripley BD. 2002. Modern Applied Statistics with S. Fourth ed. New York: Springer) to test whether each predictor indeed explained independent variability that is not explained by any of the other predictors. This procedure can eliminate correlated predictors from the final model. -->
+<!-- ```{r stepwise regression, results='hold'} -->
+<!-- # -->
+<!-- # model.full <- lmerTest::lmer(formula = formula(paste(params$dependent_variable," ~ 1 + attention + drug_on + unit_class + attention*drug_on + attention*unit_class + drug_on*unit_class + attention*drug_on*unit_class + (1|unit)")), -->
+<!-- #                              data=populationdata, na.action=na.omit, REML=FALSE) # intercept only -->
+<!-- # model.step <- lmerTest::step(model.full, direction='both') -->
+
+<!-- model.step <- lmerTest::step(model.att_drug_unitc, direction='both') -->
+<!-- model.step -->
+<!-- ``` -->
 
 ### compare models
 Now test whether the addition of a predictor provides a better model fit (explains more  variance) using likelihood ratio tests at every stage.
@@ -126,14 +137,14 @@ tidy(model.comparison)
 ### coefficient confidence intervals
 Use robust regression (bootstrap) to obtain confidence intervals
 ```{r bootstrap to obtain confidence intervals, results='hold'}
-# # run bootstrap to produce 95% confidence intervals
-# confint(model.att_drug_unitc, level = 0.95,
-#         method = "boot",
-#         nsim = 5000,
-#         boot.type = c("perc","basic","norm"),
-#         FUN = NULL, quiet = FALSE,
-#         oldNames = TRUE,
-#         cl = clus)
+# run bootstrap to produce 95% confidence intervals
+confint(model.att_drug_unitc, level = 0.95,
+        method = "boot",
+        nsim = 5000,
+        boot.type = c("perc","basic","norm"),
+        FUN = NULL, quiet = FALSE,
+        oldNames = TRUE,
+        cl = clus)
 ```
 
 ### parametric bootstrap model fits
@@ -141,45 +152,45 @@ We check the model comparisons using parametric bootstrap to control for Type I 
 
 ```{r parametric bootstrap of model fits, results='hold', warning=FALSE}
 
-# # check whether params$dependent_variable has NA values. Bootstrap does not work with NA values
-# populationdata_na <- populationdata[complete.cases(populationdata),]
-# # na.omit(populationdata)
-# 
-# # run models again without NA values
-# #intercept only
-# model_na.base <- lmerTest::lmer(formula = formula(paste(params$dependent_variable," ~ 1 + (1|unit)")),
-#                              data = populationdata_na,
-#                              na.action = na.omit,
-#                              REML = FALSE)
-# 
-# # main effects
-# model_na.att <- update(model_na.base, .~. + attention)
-# model_na.drug <- update(model_na.att, .~. + drug_on)
-# model_na.unitc <- update(model_na.drug, .~. + unit_class)
-# 
-# # interaction
-# model_na.att_drug <- update(model_na.unitc, .~. + attention*drug_on)
-# model_na.att_unitc <- update(model_na.att_drug, .~. + attention*unit_class)
-# model_na.drug_unitc <- update(model_na.att_unitc, .~. + drug_on*unit_class)
-# model_na.att_drug_unitc <- update(model_na.att_unitc, .~. + attention*drug_on*unit_class)
-# 
-# # run on multiple cores
-# nc <- parallel::detectCores()
-# clus <- parallel::makeCluster(rep("localhost", nc))
-# 
-# bootstrap.att <- pbkrtest::PBmodcomp(model_na.att, model_na.base, cl = clus)
-# bootstrap.drug <- pbkrtest::PBmodcomp(model_na.drug, model_na.att, cl = clus)
-# bootstrap.unitc <- pbkrtest::PBmodcomp(model_na.unitc, model_na.drug, cl = clus)
-# bootstrap.att_drug <- pbkrtest::PBmodcomp(model_na.att_drug, model_na.unitc, cl = clus)
-# bootstrap.att_unitc <- pbkrtest::PBmodcomp(model_na.att_unitc, model_na.att_drug, cl = clus)
-# bootstrap.drug_unitc <- pbkrtest::PBmodcomp(model_na.drug_unitc, model_na.att_unitc, cl = clus)
-# bootstrap.att_drug_unitc <- pbkrtest::PBmodcomp(model_na.att_drug_unitc, model_na.drug_unitc, cl = clus)
-# 
-# tibble(
-#   id = c("bootstrap.att", "bootstrap.drug", "bootstrap.unitc", "bootstrap.att_drug","bootstrap.att_unitc","bootstrap.drug_unitc","bootstrap.att_drug_unitc"),
-#   p = c(bootstrap.att$test$p.value[1], bootstrap.drug$test$p.value[1], bootstrap.unitc$test$p.value[1], bootstrap.att_drug$test$p.value[1], bootstrap.att_unitc$test$p.value[1], bootstrap.drug_unitc$test$p.value[1], bootstrap.att_drug_unitc$test$p.value[1]),
-#   bootp = c(bootstrap.att$test$p.value[2], bootstrap.drug$test$p.value[2], bootstrap.unitc$test$p.value[2], bootstrap.att_drug$test$p.value[2], bootstrap.att_unitc$test$p.value[2], bootstrap.drug_unitc$test$p.value[2], bootstrap.att_drug_unitc$test$p.value[2]),
-# )
+# check whether params$dependent_variable has NA values. Bootstrap does not work with NA values
+populationdata_na <- populationdata[complete.cases(populationdata),]
+# na.omit(populationdata)
+
+# run models again without NA values
+#intercept only
+model_na.base <- lmerTest::lmer(formula = formula(paste(params$dependent_variable," ~ 1 + (1|unit)")),
+                             data = populationdata_na,
+                             na.action = na.omit,
+                             REML = FALSE)
+
+# main effects
+model_na.att <- update(model_na.base, .~. + attention)
+model_na.drug <- update(model_na.att, .~. + drug_on)
+model_na.unitc <- update(model_na.drug, .~. + unit_class)
+
+# interaction
+model_na.att_drug <- update(model_na.unitc, .~. + attention*drug_on)
+model_na.att_unitc <- update(model_na.att_drug, .~. + attention*unit_class)
+model_na.drug_unitc <- update(model_na.att_unitc, .~. + drug_on*unit_class)
+model_na.att_drug_unitc <- update(model_na.att_unitc, .~. + attention*drug_on*unit_class)
+
+# run on multiple cores
+nc <- parallel::detectCores()
+clus <- parallel::makeCluster(rep("localhost", nc))
+
+bootstrap.att <- pbkrtest::PBmodcomp(model_na.att, model_na.base, cl = clus)
+bootstrap.drug <- pbkrtest::PBmodcomp(model_na.drug, model_na.att, cl = clus)
+bootstrap.unitc <- pbkrtest::PBmodcomp(model_na.unitc, model_na.drug, cl = clus)
+bootstrap.att_drug <- pbkrtest::PBmodcomp(model_na.att_drug, model_na.unitc, cl = clus)
+bootstrap.att_unitc <- pbkrtest::PBmodcomp(model_na.att_unitc, model_na.att_drug, cl = clus)
+bootstrap.drug_unitc <- pbkrtest::PBmodcomp(model_na.drug_unitc, model_na.att_unitc, cl = clus)
+bootstrap.att_drug_unitc <- pbkrtest::PBmodcomp(model_na.att_drug_unitc, model_na.drug_unitc, cl = clus)
+
+tibble(
+  id = c("bootstrap.att", "bootstrap.drug", "bootstrap.unitc", "bootstrap.att_drug","bootstrap.att_unitc","bootstrap.drug_unitc","bootstrap.att_drug_unitc"),
+  p = c(bootstrap.att$test$p.value[1], bootstrap.drug$test$p.value[1], bootstrap.unitc$test$p.value[1], bootstrap.att_drug$test$p.value[1], bootstrap.att_unitc$test$p.value[1], bootstrap.drug_unitc$test$p.value[1], bootstrap.att_drug_unitc$test$p.value[1]),
+  bootp = c(bootstrap.att$test$p.value[2], bootstrap.drug$test$p.value[2], bootstrap.unitc$test$p.value[2], bootstrap.att_drug$test$p.value[2], bootstrap.att_unitc$test$p.value[2], bootstrap.drug_unitc$test$p.value[2], bootstrap.att_drug_unitc$test$p.value[2]),
+)
 ```
 
 ### Kenward-roger approximation
@@ -199,18 +210,6 @@ tibble(
   F = c(KR.att$stats$Fstat, KR.drug$stats$Fstat, KR.unitc$stats$Fstat, KR.att_drug$stats$Fstat, KR.att_unitc$stats$Fstat, KR.drug_unitc$stats$Fstat, KR.att_drug_unitc$stats$Fstat),
   p = c(KR.att$stats$p.value, KR.drug$stats$p.value, KR.unitc$stats$p.value, KR.att_drug$stats$p.value, KR.att_unitc$stats$p.value, KR.drug_unitc$stats$p.value, KR.att_drug_unitc$stats$p.value),
 )
-```
-
-### stepwise regression
-Because some variables could be correlated, we used an algorithm for forward/backward step- wise model selection (Venables WN, Ripley BD. 2002. Modern Applied Statistics with S. Fourth ed. New York: Springer) to test whether each predictor indeed explained independent variability that is not explained by any of the other predictors. This procedure can eliminate correlated predictors from the final model.
-```{r stepwise regression, results='hold'}
-# 
-# model.full <- lmerTest::lmer(formula = formula(paste(params$dependent_variable," ~ 1 + attention + drug_on + unit_class + attention*drug_on + attention*unit_class + drug_on*unit_class + attention*drug_on*unit_class + (1|unit)")), 
-#                              data=populationdata, na.action=na.omit, REML=FALSE) # intercept only
-# model.step <- lmerTest::step(model.full, direction='both')   
-
-model.step <- lmerTest::step(model.att_drug_unitc, direction='both')
-model.step
 ```
 
 ### Bayes factor
