@@ -8,7 +8,7 @@ clear all
 addpath(genpath('./repositories/attention-parietal-dopamine'))
 addpath(genpath('./repositories/plotj'))
 addpath(genpath('./repositories/gain-variability'))
-
+addpath(genpath('./repositories/bayesFactor'))
 %% Directories
 % Set data directories
 
@@ -81,7 +81,9 @@ unit_class(waveform.peak_to_trough_time > waveform_cutoff) = {'Broad'};
 
 % fill and define as categorical variable
 unitlist.peak_to_trough_time = waveform.peak_to_trough_time;
-unitlist.unit_class = categorical(unit_class);
+unitlist.unit_class = categorical(unit_class, 'Ordinal', false);
+unitlist.unit_class = reordercats(unitlist.unit_class, label_unitclass);
+
 unitlist.waveform = waveform.waveform;
 
 waveform_time = waveform.time;
@@ -195,6 +197,13 @@ clear t_*
 % print head
 fprintf('att_table:\n')
 disp(head(att_table))
+
+% save to csv file for R analysis
+table_selectivity = get_unit_selectivity(att_table, selectivity_criterium);
+R_table = att_table(table_selectivity,:);
+R_table = removevars(R_table,{'PSTH','waveform'});
+writetable(R_table, fullfile(path_population,sprintf('population_attention_%s.csv',selectivity_criterium)))
+
 
 %% drug table
 % table for analysis results that are computed for each attention
@@ -690,7 +699,7 @@ plotj_saveFig(savefigname, {'png', 'svg'})
 
 data2plot = {'rate', 'FF', 'gain_log'};
 
-for idrug = 1:num_drug
+for idrug = 2:num_drug
     
     idx_unit = get_unit_selectivity(att_table, selectivity_criterium, {'drug',label_drug(idrug)});    
     
@@ -701,13 +710,78 @@ for idrug = 1:num_drug
         fprintf('\nDRUG: %s, DATATYPE: %s, UNIT SELECTION: %s, n=%d \n', label_drug{idrug}, data2plot{idp}, selectivity_criterium, length(unique(att_table.unit(idx_unit))))
 
         % model fit across attention, drug and unit_class
-        lme_population = fitlme(tmp_table,[data2plot{idp} ' ~ attention*drug_on*unit_class + (1|unit)'],'DummyVarCoding','effects'); % fit interaction model with effect coding
+        mod_population.lme = fitlme(tmp_table,[data2plot{idp} ' ~ attention*drug_on*unit_class + (1|unit)'],'DummyVarCoding','effects'); % fit interaction model with effect coding
+        mod_population.anova = anova(mod_population.lme);
+
+        % hierarchical model fits
+        mod.m1_intercept.lme = fitlme(tmp_table,[data2plot{idp} ' ~ 1 + (1|unit)'],'DummyVarCoding','effects');
+        mod.m2_att.lme = fitlme(tmp_table,[data2plot{idp} ' ~ attention + (1|unit)'],'DummyVarCoding','effects');
+        mod.m3_drug.lme = fitlme(tmp_table,[data2plot{idp} ' ~ attention + drug_on + (1|unit)'],'DummyVarCoding','effects');
+        mod.m4_unitc.lme = fitlme(tmp_table,[data2plot{idp} ' ~ attention + drug_on + unit_class + (1|unit)'],'DummyVarCoding','effects');
+        mod.m5_att_drug.lme = fitlme(tmp_table,[data2plot{idp} ' ~ attention + drug_on + unit_class + attention*drug_on + (1|unit)'],'DummyVarCoding','effects');
+        mod.m6_att_unitc.lme = fitlme(tmp_table,[data2plot{idp} ' ~ attention + drug_on + unit_class + attention:drug_on + attention:unit_class + (1|unit)'],'DummyVarCoding','effects');
+        mod.m7_drug_unitc.lme = fitlme(tmp_table,[data2plot{idp} ' ~ attention + drug_on + unit_class + attention:drug_on + attention:unit_class + drug_on:unit_class + (1|unit)'],'DummyVarCoding','effects');
+        mod.m8_att_drug_unitc.lme = fitlme(tmp_table,[data2plot{idp} ' ~ attention + drug_on + unit_class + attention:drug_on + attention:unit_class + drug_on:unit_class + attention:drug_on:unit_class + (1|unit)'],'DummyVarCoding','effects');
+
+        % likelihood ratio tests of hierarchical model fits
+        mod.m2_att.compare = compare(mod.m1_intercept.lme, mod.m2_att.lme, 'CheckNesting', true);
+        mod.m3_drug.compare = compare(mod.m2_att.lme, mod.m3_drug.lme, 'CheckNesting', true);
+        mod.m4_unitc.compare = compare(mod.m3_drug.lme, mod.m4_unitc.lme, 'CheckNesting', true);
+        mod.m5_att_drug.compare = compare(mod.m4_unitc.lme, mod.m5_att_drug.lme, 'CheckNesting', true);
+        mod.m6_att_unitc.compare = compare(mod.m5_att_drug.lme, mod.m6_att_unitc.lme, 'CheckNesting', true);
+        mod.m7_drug_unitc.compare = compare(mod.m6_att_unitc.lme, mod.m7_drug_unitc.lme, 'CheckNesting', true);
+        mod.m8_att_drug_unitc.compare = compare(mod.m7_drug_unitc.lme, mod.m8_att_drug_unitc.lme, 'CheckNesting', true);
         
+        % convert BIC to bayes factor: 
+        % BF = (exp((BIC(null_lm) - BIC(full_lm))/2)). 
+        % See [here](https://www.rpubs.com/lindeloev/bayes_factors) for
+        % more info on BIC vs. Bayes factor. Computing BF from BIC is not
+        % ideal, as the definition of the prior is far from ideal. 
+        mod.m2_att.BF = exp((mod.m1_intercept.lme.ModelCriterion.BIC - mod.m2_att.lme.ModelCriterion.BIC)/2);  
+        mod.m3_drug.BF = exp((mod.m2_att.lme.ModelCriterion.BIC - mod.m3_drug.lme.ModelCriterion.BIC)/2);  
+        mod.m4_unitc.BF = exp((mod.m3_drug.lme.ModelCriterion.BIC - mod.m4_unitc.lme.ModelCriterion.BIC)/2);  
+        mod.m5_att_drug.BF = exp((mod.m4_unitc.lme.ModelCriterion.BIC - mod.m5_att_drug.lme.ModelCriterion.BIC)/2);  
+        mod.m6_att_unitc.BF = exp((mod.m5_att_drug.lme.ModelCriterion.BIC - mod.m6_att_unitc.lme.ModelCriterion.BIC)/2);  
+        mod.m7_drug_unitc.BF = exp((mod.m6_att_unitc.lme.ModelCriterion.BIC - mod.m7_drug_unitc.lme.ModelCriterion.BIC)/2);  
+        mod.m8_att_drug_unitc.BF = exp((mod.m7_drug_unitc.lme.ModelCriterion.BIC - mod.m8_att_drug_unitc.lme.ModelCriterion.BIC)/2);  
+        
+        % get explained variance (R2)
+        r2_type = 'Ordinary';
+%         r2_type = 'Adjusted';
+        lme_r2 = [mod.m1_intercept.lme.Rsquared.(r2_type) ...
+            mod.m2_att.lme.Rsquared.(r2_type) ...
+            mod.m3_drug.lme.Rsquared.(r2_type) ...
+            mod.m4_unitc.lme.Rsquared.(r2_type) ...
+            mod.m5_att_drug.lme.Rsquared.(r2_type) ...
+            mod.m6_att_unitc.lme.Rsquared.(r2_type) ...
+            mod.m7_drug_unitc.lme.Rsquared.(r2_type) ...
+            mod.m8_att_drug_unitc.lme.Rsquared.(r2_type) ...
+            ];
+%         
+%         % bayes factor anova
+%         bf_full = bf.anova(tmp_table,[data2plot{idp} ' ~ attention*drug_on*unit_class + (1|unit)']);
+%         
+% %         bf_intercept = bf.anova(tmp_table,[data2plot{idp} ' ~ 1 + (1|unit)']);
+%         bf_att = bf.anova(tmp_table,[data2plot{idp} ' ~ attention + (1|unit)']);
+%         bf_drug = bf.anova(tmp_table,[data2plot{idp} ' ~ attention + drug_on + (1|unit)']);
+%         bf_unitc = bf.anova(tmp_table,[data2plot{idp} ' ~ attention + drug_on + unit_class + (1|unit)']);
+%         bf_att_drug = bf.anova(tmp_table,[data2plot{idp} ' ~ attention + drug_on + unit_class + att*drug + (1|unit)']);
+%         bf_att_unitc = bf.anova(tmp_table,[data2plot{idp} ' ~ attention + drug_on + unit_class + att:drug + att:unitc + (1|unit)']);
+%         bf_drug_unitc = bf.anova(tmp_table,[data2plot{idp} ' ~ attention + drug_on + unit_class + att:drug + att:unitc + drug_on:unitc + (1|unit)']);
+%         bf_att_drug_unitc = bf.anova(tmp_table,[data2plot{idp} ' ~ attention + drug_on + unit_class + att:drug + att:unitc + att:drug_on:unit_class + (1|unit)']);
+%         
+%         
+%         lme_population = fitlme(tmp_table,[data2plot{idp} ' ~ attention + drug_on + unit_class + (1|unit)'],'DummyVarCoding','effects'); % fit interaction model with effect coding
+        
+%         exp(−12(BIC1−BIC2))
+%         
+%         writetable(test,'test.csv')
+%         
         % print stats for each group
-        disp(grpstats(tmp_table,{'attention','drug_on','unit_class'},{'min','max','mean','median'},'DataVars',data2plot{idp}))
+%         disp(grpstats(tmp_table,{'attention','drug_on','unit_class'},{'min','max','mean','median'},'DataVars',data2plot{idp}))
         
         % print coefficients
-        disp(lme_population.Coefficients)
+        disp(mod_population.lme)
     end
 end
 
@@ -1145,6 +1219,7 @@ for idrug = 1:length(label_drug)
         tmp_data(:,1) = att_table.roc(idx & att_table.drug_on=='Drug off');
         tmp_data(:,2) = att_table.roc(idx & att_table.drug_on=='Drug on');
 
+        [bf10,p,CI,stats] = bf.ttest(tmp_data(:,1),tmp_data(:,2))
         plotj_scatter(tmp_data, ...
             'markerStyle', markerstyle, 'MarkerSize', markersize, ...
             'markerFaceColor', colors(iunitc,:), 'markerFaceAlpha', 0.5, ...
@@ -1187,7 +1262,7 @@ for idrug = 1:length(label_drug)
 
         idx = tmp_data(:,1)<0.5;
         tmp_data(idx,:) = 1-tmp_data(idx,:);
-
+        [bf10,p,CI,stats] = bf.ttest(tmp_data(:,1),tmp_data(:,2))
         P_roc(idrug,iunitc) = compare_means(tmp_data(:,1),tmp_data(:,2), 1, 'rank');
 
         bar_data = diff(tmp_data,1,2);

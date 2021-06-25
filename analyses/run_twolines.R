@@ -6,7 +6,7 @@ lapply(x, function(x) {if (!require(x, character.only=T)) {install.packages(x);r
 rm(list=ls(all=TRUE)) 
 
 # load useful functions ---------------------------------------------------
-wddir = here('repositories/attention-parietal-dopamine/analyses/external/')
+wddir = here('./external/')
 source(str_c(wddir,'twolines.R'))
 
 # set files and directories
