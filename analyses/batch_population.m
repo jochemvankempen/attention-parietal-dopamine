@@ -13,8 +13,8 @@ addpath(genpath('./repositories/bayesFactor'))
 % Set data directories
 
 subjects = {'W','J'};
-path_data = ['C:\Jochem\Gratc_PPC_DA_new\data\processed'];
-% path_data = ['/Users/jochemvankempen/NCL/gratc_DA/processed'];
+% path_data = ['C:\Jochem\Gratc_PPC_DA_new\data\processed'];
+path_data = ['/Users/jochemvankempen/NCL/gratc_DA/processed'];
 path_population = regexprep(path_data,'processed','population');
 
 if ~isfolder(path_population)
@@ -32,7 +32,7 @@ label_attention = {'Attend RF','Attend away'};
 label_drug_onoff = {'Drug on','Drug off'};
 label_unitclass = {'Narrow','Broad'};
 
-markersize = 10; % scatterplot markersize
+markersize = 15; % scatterplot markersize
 
 plot_conventions = 'Science'; % follow figure conventions from this journal
 
@@ -786,36 +786,6 @@ for idrug = 2:num_drug
 end
 
 
-% model fit to 'attention ROC' across drug
-% conditions, for broad and narrow spiking cells. We use random intercepts
-% for each unit to account for the repeated measures 
-
-data2plot = {'roc','MI'};
-
-for idrug = 1:num_drug
-    
-    idx_unit = get_unit_selectivity(att_table, selectivity_criterium, {'drug',label_drug(idrug)});    
-    idx_cond = att_table.attention=='Attend RF';
-    idx = idx_unit & idx_cond;
-    tmp_table = att_table(idx,:);
-    
-    for idp = 1:length(data2plot)
-        
-        fprintf('\nDRUG: %s, DATATYPE: %s, UNIT SELECTION: %s, n=%d \n', label_drug{idrug}, data2plot{idp}, selectivity_criterium, length(unique(att_table.unit(idx_unit))))
-
-        % model fit across attention, drug and unit_class
-        lme_population = fitlme(tmp_table,[data2plot{idp} ' ~ drug_on*unit_class + (1|unit)'],'DummyVarCoding','effects'); % fit interaction model with effect coding
-        
-        % print stats for each group
-        disp(grpstats(tmp_table,{'drug_on','unit_class'},{'min','max','mean','median'},'DataVars',data2plot{idp}))
-        
-        % print coefficients
-        disp(lme_population.Coefficients)
-    end
-end
-
-
-
 %% Violin, population plot: rate, FF and gain, resolved for unit class
 
 % data2plot = {'rate'};
@@ -827,9 +797,6 @@ data2plot = {'rate','FF'};
 colors_violin = reshape(colors_violin, [4,3]);
 labels_violin = reshape(labels_violin, [4,1]);
 labels_violin_short = reshape(labels_violin_short, [4,1]);
-
-colors_scatter = get_colors('spikewidth');
-markerstyle = {'o','v'};
 
 % plotting and post-hoc tests
 ncol = num_drug*length(label_unitclass); % data2plot x unit
@@ -943,6 +910,7 @@ for idp = 1:length(data2plot)
             %             sprintf('att %s drug: %s = %1.2f, %s', '\times', '\beta', betas(3), p_string{3}), ...
             %             sprintf('n = %d',length(unique(v_att_table.unit)))};
             
+            
             % plot text
             YLIM = get(gca,'ylim');
             switch data2plot{idp}
@@ -982,7 +950,8 @@ for idp = 1:length(data2plot)
                 set(gca,'XTickLabelRotation',-25)
             end
             
-            [p_masked] = p_val<0.05;
+            [p_fdr, p_masked] = FDR(p_val, 0.05);
+            % [p_masked] = p_val<0.05;
             p_masked = [p_masked ; false];
             plotj_text_emphasise(h_text, 1, 'italic', p_masked);
             plotj_text_emphasise(h_text, 1, 'bold', p_masked);
@@ -1013,6 +982,8 @@ plotj_saveFig(savefigname, {'png', 'svg'})
 ncol = 2 * (length(label_drug));
 nrow = 2; % rate, FF
 
+markerstyle = {'o','v'}; 
+colors_scatter = get_colors('spikewidth');
 
 idx_subplot = [1 2 ncol+1 ncol+2 ; 3 4 ncol+3 ncol+4] ;
 idx_axlabel = [1 NaN 2 NaN ; 3 NaN 4 NaN]+2;
@@ -1163,14 +1134,14 @@ savefigname = fullfile(path_population, sprintf('mean_rate_FF_drug'));
 plotj_saveFig(savefigname, {'png', 'svg'})
 
 
-%% Attend ROC, drug/no drug, narrow/broad. DrugMI-ejecCurrent, table
+%% Attend ROC, drug/no drug, narrow/broad. DrugMI-ejecCurrent
 
 datatype = 'MI';
 % datatype = 'AUROC';
 % datatype = 'gain_log';
 
 colors = get_colors('spikewidth');
-markerstyle = {'o','v'};
+markerstyle = {'o','o'};
 
 
 idx_group = 1;
@@ -1244,7 +1215,7 @@ for idrug = 1:length(label_drug)
             label_unitclass{iunitc}, ...
             'AUROC', ...
             mean(delta_data), ...
-            std(delta_data)/sqrt(length(find(unit2plot))), ...
+            std(delta_data)/sqrt(size(tmp_data,1)), ...
             p_string, ...
             d)
 
@@ -1256,7 +1227,7 @@ for idrug = 1:length(label_drug)
         y_pos = get_value_range(tmp_y, 0.95 - 0.07 * (iunitc-1));
         
         h_text(idrug,iunitc) = text(x_pos, y_pos, ...
-            sprintf('%s, %s (n=%d)', p_string, label_unitclass{iunitc}, length(find(unit2plot))), ...
+            sprintf('%s, %s (n=%d)', p_string, label_unitclass{iunitc}, size(tmp_data,1)), ...
             'Color', colors(iunitc,:), 'FontSize', fSet.Fontsize_ax);
         %% inset
 
@@ -1295,7 +1266,7 @@ for idrug = 1:length(label_drug)
             label_unitclass{iunitc}, ...
             'AUROC', ...
             mean(delta_data), ...
-            std(delta_data)/sqrt(length(find(unit2plot))), ...
+            std(delta_data)/sqrt(size(tmp_data,1)), ...
             p_string, ...
             d)
 
@@ -1332,16 +1303,13 @@ plotj_text_emphasise(h_text, p_masked, 'bold');
 
 switch datatype
     case 'MI'
-        %         data2plot = rate_ROC.mi_drug(:,1);
         v_drug_table = unstack(drug_table, 'MI', {'attention'}, 'GroupingVariables', {'unit','unit_class'}, 'VariableNamingRule', 'preserve');
-        data2plot = mean(rate_ROC.mi_drug,2);
-
-%         data2plot = mean([v_drug_table.("Attend RF") v_drug_table.("Attend away")],2);
+        data2plot = mean([v_drug_table.("Attend RF") v_drug_table.("Attend away")],2);
         
         iunitc=[];
         
         ylabel2use = 'Drug modulation index';
-        ylim2use = [];
+        ylim2use = {[-0.5 0.5],[-0.4 0.2]};
     case 'AUROC'
         
         % get data - AUROC
@@ -1356,7 +1324,7 @@ switch datatype
         iunitc = [];
         
         ylabel2use = [plotj_symbol('Delta') ' attention AUROC'];
-        ylim2use = [-0.25 0.3];
+        ylim2use = {[-0.25 0.3],[-0.25 0.3]};
     case 'gain_log'
         
         
@@ -1407,12 +1375,12 @@ for idrug = 1:ncol
         hscat = plotj_scatter(tmp_data, ...
             'dataIndex', grp2idx(unitlist.unit_class(unit2plot)), ...
             'markerStyle', markerstyle, 'MarkerSize', markersize, ...
-            'markerFaceColor', colors(1:2,:), 'markerFaceAlpha', [0.5 0.5], ...
-            'markerEdgeColor', colors(1:2,:), 'markerEdgeAlpha', [0.5 0.5], ...
+            'markerFaceColor', flip(colors(1:2,:)), 'markerFaceAlpha', [0.5 0.5], ...
+            'markerEdgeColor', flip(colors(1:2,:)), 'markerEdgeAlpha', [0.5 0.5], ...
             'axislimit', [], ...
             'unityLine', 0);
-        text_legend{1} = [label_unitclass{1} ' (n=' num2str(length(find(grp2idx(unitlist.unit_class(idx_unit))==1))) ')'];
-        text_legend{2} = [label_unitclass{2} ' (n=' num2str(length(find(grp2idx(unitlist.unit_class(idx_unit))==2))) ')'];
+        text_legend{1} = [label_unitclass{1} ' (n=' num2str(length(find(unitlist.unit_class(idx_unit)==label_unitclass(1)))) ')'];
+        text_legend{2} = [label_unitclass{2} ' (n=' num2str(length(find(unitlist.unit_class(idx_unit)==label_unitclass(2)))) ')'];
     end
         
     data_table = table(unitlist.EjectCurrent_centered(unit2plot), data2plot(unit2plot), 'VariableNames', {'x', 'y'});
@@ -1471,7 +1439,7 @@ for idrug = 1:ncol
     end
     
     if ~isempty(ylim2use)
-        ylim(ylim2use)
+        ylim(ylim2use{idrug})
     end
     if ~isempty(xlim2use)
         xlim(xlim2use)
@@ -1605,8 +1573,8 @@ for icrit = 1:length(selectivity_criteria)
             hscat = plotj_scatter(tmp_data, ...
                 'dataIndex', grp2idx(unitlist.unit_class(unit2plot)), ...
                 'markerStyle', {'o','o'}, 'MarkerSize', markersize, ...
-                'markerFaceColor', colors(1:2,:), 'markerFaceAlpha', [0.5 0.5], ...
-                'markerEdgeColor', colors(1:2,:), 'markerEdgeAlpha', [0.5 0.5], ...
+                'markerFaceColor', flip(colors(1:2,:)), 'markerFaceAlpha', [0.5 0.5], ...
+                'markerEdgeColor', flip(colors(1:2,:)), 'markerEdgeAlpha', [0.5 0.5], ...
                 'axislimit', [], ...
                 'unityLine', 0);
             text_legend{1} = [label_unitclass{1} ' (n=' num2str(length(find(unitlist.unit_class(idx_unit)==label_unitclass(1)))) ')'];
@@ -2101,7 +2069,8 @@ for idrug = 1:length(label_drug)
         
         ylabel('log(\sigma^{2}_G )', 'FontSize', fSet.Fontsize_text)
         
-        [p_masked] = p_val<0.05;
+        [p_fdr, p_masked] = FDR(p_val, 0.05);
+%         [p_masked] = p_val<0.05;
         p_masked = [p_masked ; false];
         plotj_text_emphasise(h_text, 1, 'italic', p_masked);
         plotj_text_emphasise(h_text, 1, 'bold', p_masked);
@@ -2141,8 +2110,8 @@ for idrug = 1:ncol
         for idrug_in = 1:2
             iattDrug = iattDrug+1;
 
-            y = squeeze(mean(RT.RT(idx_rec,idrug_in,idx_attention==iatt),3)) * mfactor;            
-            text_legend{iattDrug} = sprintf('Attend %s, Drug %s', label_attention{iatt}, label_drug_onoff{idrug_in});            
+            y = squeeze(mean(RT.RT(idx_rec,idrug_in,abs(idx_attention_cond-2)==iatt),3)) * mfactor;            
+            text_legend{iattDrug} = sprintf('%s, %s', label_attention{iatt}, label_drug_onoff{idrug_in});            
             n = length(find(idx_rec));
             rec = (1:n)';
             cond = repmat(iatt,n,1);
@@ -2164,10 +2133,10 @@ for idrug = 1:ncol
 %% do stats
 % check with linear mixed effect model
 
-    lme = fitlme(RT_table,['RT ~ 1 + (1|recording)']);% fit constant
-    lme2 = fitlme(RT_table,['RT ~ attention + (1|recording)']); % fit linear model with attention condition
-    lme3 = fitlme(RT_table,['RT ~ attention + drug + (1|recording)']); %  fit linear model with states
-    lme4 = fitlme(RT_table,['RT ~ attention + drug + attention:drug + (1|recording)']); % fit interaction
+    lme = fitlme(RT_table,['RT ~ 1 + (1|recording)'], 'DummyVarCoding', 'effects');% fit constant
+    lme2 = fitlme(RT_table,['RT ~ attention + (1|recording)'], 'DummyVarCoding', 'effects'); % fit linear model with attention condition
+    lme3 = fitlme(RT_table,['RT ~ attention + drug + (1|recording)'], 'DummyVarCoding', 'effects'); %  fit linear model with states
+    lme4 = fitlme(RT_table,['RT ~ attention + drug + attention:drug + (1|recording)'], 'DummyVarCoding', 'effects'); % fit interaction
     
     [BETA,BETANAMES,STATS] = fixedEffects(lme4);
     
