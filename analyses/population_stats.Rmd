@@ -80,6 +80,7 @@ populationdata$unit <- factor(populationdata$unit, ordered=FALSE)
 populationdata$attention <- C(populationdata$attention, "contr.sum")
 populationdata$drug_on <- C(populationdata$drug_on, "contr.sum")
 populationdata$unit_class <- C(populationdata$unit_class, "contr.sum")
+print(populationdata)
 ```
 
 ## mixed-level model
@@ -138,13 +139,15 @@ tidy(model.comparison)
 Use robust regression (bootstrap) to obtain confidence intervals
 ```{r bootstrap to obtain confidence intervals, results='hold'}
 # run bootstrap to produce 95% confidence intervals
-confint(model.att_drug_unitc, level = 0.95,
-        method = "boot",
-        nsim = 5000,
-        boot.type = c("perc","basic","norm"),
-        FUN = NULL, quiet = FALSE,
-        oldNames = TRUE,
-        cl = clus)
+knitr::kable(confint(model.att_drug_unitc, level = 0.95,
+                     method = "boot",
+                     nsim = 5000,
+                     boot.type = c("perc","basic","norm"),
+                     FUN = NULL, quiet = FALSE,
+                     oldNames = TRUE,
+                     cl = clus
+                     )
+             )
 ```
 
 ### parametric bootstrap model fits
@@ -253,5 +256,7 @@ colnames(BF) <- c("Model1","Model2","BF")
 
 print('R2 values for each model fit:')
 print(r2_model)
-print(BF)
+# print(BF, nrows = 100)
+
+knitr::kable(BF)
 ```

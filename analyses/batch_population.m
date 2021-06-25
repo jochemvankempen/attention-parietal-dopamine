@@ -699,13 +699,13 @@ plotj_saveFig(savefigname, {'png', 'svg'})
 
 data2plot = {'rate', 'FF', 'gain_log'};
 
-for idrug = 2:num_drug
+for idrug = 1:num_drug
     
     idx_unit = get_unit_selectivity(att_table, selectivity_criterium, {'drug',label_drug(idrug)});    
     
     tmp_table = att_table(idx_unit,:);
     
-    for idp = 1:length(data2plot)
+    for idp = 2:length(data2plot)
         
         fprintf('\nDRUG: %s, DATATYPE: %s, UNIT SELECTION: %s, n=%d \n', label_drug{idrug}, data2plot{idp}, selectivity_criterium, length(unique(att_table.unit(idx_unit))))
 

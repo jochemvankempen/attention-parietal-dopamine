@@ -103,28 +103,47 @@ body {
 <span id="cb6-11"><a href="#cb6-11" aria-hidden="true" tabindex="-1"></a><span class="co"># set contrasts to sum (intercept is grand mean, effect-coded contrasts)</span></span>
 <span id="cb6-12"><a href="#cb6-12" aria-hidden="true" tabindex="-1"></a>populationdata<span class="sc">$</span>attention <span class="ot">&lt;-</span> <span class="fu">C</span>(populationdata<span class="sc">$</span>attention, <span class="st">&quot;contr.sum&quot;</span>)</span>
 <span id="cb6-13"><a href="#cb6-13" aria-hidden="true" tabindex="-1"></a>populationdata<span class="sc">$</span>drug_on <span class="ot">&lt;-</span> <span class="fu">C</span>(populationdata<span class="sc">$</span>drug_on, <span class="st">&quot;contr.sum&quot;</span>)</span>
-<span id="cb6-14"><a href="#cb6-14" aria-hidden="true" tabindex="-1"></a>populationdata<span class="sc">$</span>unit_class <span class="ot">&lt;-</span> <span class="fu">C</span>(populationdata<span class="sc">$</span>unit_class, <span class="st">&quot;contr.sum&quot;</span>)</span></code></pre></div>
+<span id="cb6-14"><a href="#cb6-14" aria-hidden="true" tabindex="-1"></a>populationdata<span class="sc">$</span>unit_class <span class="ot">&lt;-</span> <span class="fu">C</span>(populationdata<span class="sc">$</span>unit_class, <span class="st">&quot;contr.sum&quot;</span>)</span>
+<span id="cb6-15"><a href="#cb6-15" aria-hidden="true" tabindex="-1"></a><span class="fu">print</span>(populationdata)</span></code></pre></div>
+<pre><code>## # A tibble: 56 x 27
+##    unit  drug_on  attention  rate    FF   roc      MI   gain gain_log Subject
+##    &lt;fct&gt; &lt;fct&gt;    &lt;fct&gt;     &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt;   &lt;dbl&gt;  &lt;dbl&gt;    &lt;dbl&gt; &lt;chr&gt;  
+##  1 32    Drug off Attend RF 29.2   2.87 0.797  0.207  0.0650   -2.73  W      
+##  2 34    Drug off Attend RF 18.2   1.79 0.760  0.197  0.0356   -3.34  W      
+##  3 40    Drug off Attend RF 27.7   3.10 0.291 -0.112  0.0703   -2.66  W      
+##  4 46    Drug off Attend RF 32.8   1.61 0.837  0.186  0.0177   -4.04  W      
+##  5 51    Drug off Attend RF 17.2   4.79 0.737  0.266  0.202    -1.60  W      
+##  6 52    Drug off Attend RF 13.2   5.61 0.746  0.310  0.314    -1.16  W      
+##  7 54    Drug off Attend RF 17.7   3.82 0.712  0.200  0.150    -1.90  W      
+##  8 55    Drug off Attend RF 37.4   3.47 0.562  0.0446 0.0555   -2.89  W      
+##  9 57    Drug off Attend RF  8.70  2.71 0.605  0.113  0.219    -1.52  W      
+## 10 58    Drug off Attend RF 12.5   4.74 0.737  0.310  0.407    -0.900 W      
+## # ... with 46 more rows, and 17 more variables: Task &lt;chr&gt;, Date &lt;date&gt;,
+## #   Drug &lt;fct&gt;, EjectCurrent &lt;dbl&gt;, Weight &lt;dbl&gt;, peak_to_trough_time &lt;dbl&gt;,
+## #   unit_class &lt;fct&gt;, EjectCurrent_centered &lt;dbl&gt;, s_stim &lt;dbl&gt;, s_att &lt;dbl&gt;,
+## #   s_dru &lt;dbl&gt;, s_dir &lt;dbl&gt;, s_att*dru &lt;dbl&gt;, s_att*dir &lt;dbl&gt;,
+## #   s_dru*dir &lt;dbl&gt;, s_att*dru*dir &lt;dbl&gt;, attention_drug_on &lt;chr&gt;</code></pre>
 <h2 id="mixed-level-model">mixed-level model</h2>
 <h3 id="fit-models">fit models</h3>
 <p>Sequentially add predictors to predict neural activity (defined in <code>params$dependent_variable</code>). We add random intercepts for <code>unit</code> to account for the repeated measurements in the data.</p>
-<div class="sourceCode" id="cb7"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a><span class="co">#intercept only</span></span>
-<span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a>model.base <span class="ot">&lt;-</span> lmerTest<span class="sc">::</span><span class="fu">lmer</span>(<span class="at">formula =</span> <span class="fu">formula</span>(<span class="fu">paste</span>(params<span class="sc">$</span>dependent_variable,<span class="st">&quot; ~ 1 + (1|unit)&quot;</span>)), </span>
-<span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a>                             <span class="at">data =</span> populationdata, </span>
-<span id="cb7-4"><a href="#cb7-4" aria-hidden="true" tabindex="-1"></a>                             <span class="at">na.action =</span> na.omit, </span>
-<span id="cb7-5"><a href="#cb7-5" aria-hidden="true" tabindex="-1"></a>                             <span class="at">REML =</span> <span class="cn">FALSE</span>) </span>
-<span id="cb7-6"><a href="#cb7-6" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb7-7"><a href="#cb7-7" aria-hidden="true" tabindex="-1"></a><span class="co"># main effects</span></span>
-<span id="cb7-8"><a href="#cb7-8" aria-hidden="true" tabindex="-1"></a>model.att <span class="ot">&lt;-</span> <span class="fu">update</span>(model.base, .<span class="sc">~</span>. <span class="sc">+</span> attention) </span>
-<span id="cb7-9"><a href="#cb7-9" aria-hidden="true" tabindex="-1"></a>model.drug <span class="ot">&lt;-</span> <span class="fu">update</span>(model.att, .<span class="sc">~</span>. <span class="sc">+</span> drug_on) </span>
-<span id="cb7-10"><a href="#cb7-10" aria-hidden="true" tabindex="-1"></a>model.unitc <span class="ot">&lt;-</span> <span class="fu">update</span>(model.drug, .<span class="sc">~</span>. <span class="sc">+</span> unit_class) </span>
-<span id="cb7-11"><a href="#cb7-11" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb7-12"><a href="#cb7-12" aria-hidden="true" tabindex="-1"></a><span class="co"># interaction </span></span>
-<span id="cb7-13"><a href="#cb7-13" aria-hidden="true" tabindex="-1"></a>model.att_drug <span class="ot">&lt;-</span> <span class="fu">update</span>(model.unitc, .<span class="sc">~</span>. <span class="sc">+</span> attention<span class="sc">*</span>drug_on) </span>
-<span id="cb7-14"><a href="#cb7-14" aria-hidden="true" tabindex="-1"></a>model.att_unitc <span class="ot">&lt;-</span> <span class="fu">update</span>(model.att_drug, .<span class="sc">~</span>. <span class="sc">+</span> attention<span class="sc">*</span>unit_class) </span>
-<span id="cb7-15"><a href="#cb7-15" aria-hidden="true" tabindex="-1"></a>model.drug_unitc <span class="ot">&lt;-</span> <span class="fu">update</span>(model.att_unitc, .<span class="sc">~</span>. <span class="sc">+</span> drug_on<span class="sc">*</span>unit_class) </span>
-<span id="cb7-16"><a href="#cb7-16" aria-hidden="true" tabindex="-1"></a>model.att_drug_unitc <span class="ot">&lt;-</span> <span class="fu">update</span>(model.att_unitc, .<span class="sc">~</span>. <span class="sc">+</span> attention<span class="sc">*</span>drug_on<span class="sc">*</span>unit_class) </span>
-<span id="cb7-17"><a href="#cb7-17" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb7-18"><a href="#cb7-18" aria-hidden="true" tabindex="-1"></a><span class="fu">summary</span>(model.att_drug_unitc)</span></code></pre></div>
+<div class="sourceCode" id="cb8"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a><span class="co">#intercept only</span></span>
+<span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a>model.base <span class="ot">&lt;-</span> lmerTest<span class="sc">::</span><span class="fu">lmer</span>(<span class="at">formula =</span> <span class="fu">formula</span>(<span class="fu">paste</span>(params<span class="sc">$</span>dependent_variable,<span class="st">&quot; ~ 1 + (1|unit)&quot;</span>)), </span>
+<span id="cb8-3"><a href="#cb8-3" aria-hidden="true" tabindex="-1"></a>                             <span class="at">data =</span> populationdata, </span>
+<span id="cb8-4"><a href="#cb8-4" aria-hidden="true" tabindex="-1"></a>                             <span class="at">na.action =</span> na.omit, </span>
+<span id="cb8-5"><a href="#cb8-5" aria-hidden="true" tabindex="-1"></a>                             <span class="at">REML =</span> <span class="cn">FALSE</span>) </span>
+<span id="cb8-6"><a href="#cb8-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-7"><a href="#cb8-7" aria-hidden="true" tabindex="-1"></a><span class="co"># main effects</span></span>
+<span id="cb8-8"><a href="#cb8-8" aria-hidden="true" tabindex="-1"></a>model.att <span class="ot">&lt;-</span> <span class="fu">update</span>(model.base, .<span class="sc">~</span>. <span class="sc">+</span> attention) </span>
+<span id="cb8-9"><a href="#cb8-9" aria-hidden="true" tabindex="-1"></a>model.drug <span class="ot">&lt;-</span> <span class="fu">update</span>(model.att, .<span class="sc">~</span>. <span class="sc">+</span> drug_on) </span>
+<span id="cb8-10"><a href="#cb8-10" aria-hidden="true" tabindex="-1"></a>model.unitc <span class="ot">&lt;-</span> <span class="fu">update</span>(model.drug, .<span class="sc">~</span>. <span class="sc">+</span> unit_class) </span>
+<span id="cb8-11"><a href="#cb8-11" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-12"><a href="#cb8-12" aria-hidden="true" tabindex="-1"></a><span class="co"># interaction </span></span>
+<span id="cb8-13"><a href="#cb8-13" aria-hidden="true" tabindex="-1"></a>model.att_drug <span class="ot">&lt;-</span> <span class="fu">update</span>(model.unitc, .<span class="sc">~</span>. <span class="sc">+</span> attention<span class="sc">*</span>drug_on) </span>
+<span id="cb8-14"><a href="#cb8-14" aria-hidden="true" tabindex="-1"></a>model.att_unitc <span class="ot">&lt;-</span> <span class="fu">update</span>(model.att_drug, .<span class="sc">~</span>. <span class="sc">+</span> attention<span class="sc">*</span>unit_class) </span>
+<span id="cb8-15"><a href="#cb8-15" aria-hidden="true" tabindex="-1"></a>model.drug_unitc <span class="ot">&lt;-</span> <span class="fu">update</span>(model.att_unitc, .<span class="sc">~</span>. <span class="sc">+</span> drug_on<span class="sc">*</span>unit_class) </span>
+<span id="cb8-16"><a href="#cb8-16" aria-hidden="true" tabindex="-1"></a>model.att_drug_unitc <span class="ot">&lt;-</span> <span class="fu">update</span>(model.att_unitc, .<span class="sc">~</span>. <span class="sc">+</span> attention<span class="sc">*</span>drug_on<span class="sc">*</span>unit_class) </span>
+<span id="cb8-17"><a href="#cb8-17" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-18"><a href="#cb8-18" aria-hidden="true" tabindex="-1"></a><span class="fu">summary</span>(model.att_drug_unitc)</span></code></pre></div>
 <pre><code>## Linear mixed model fit by maximum likelihood . t-tests use Satterthwaite&#39;s
 ##   method [lmerModLmerTest]
 ## Formula: 
@@ -198,16 +217,16 @@ body {
 
 <h3 id="compare-models">compare models</h3>
 <p>Now test whether the addition of a predictor provides a better model fit (explains more variance) using likelihood ratio tests at every stage.</p>
-<div class="sourceCode" id="cb9"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a><span class="co"># compare model fits</span></span>
-<span id="cb9-2"><a href="#cb9-2" aria-hidden="true" tabindex="-1"></a>model.comparison <span class="ot">&lt;-</span> <span class="fu">anova</span>(model.base,</span>
-<span id="cb9-3"><a href="#cb9-3" aria-hidden="true" tabindex="-1"></a>                          model.att,</span>
-<span id="cb9-4"><a href="#cb9-4" aria-hidden="true" tabindex="-1"></a>                          model.drug,</span>
-<span id="cb9-5"><a href="#cb9-5" aria-hidden="true" tabindex="-1"></a>                          model.unitc,</span>
-<span id="cb9-6"><a href="#cb9-6" aria-hidden="true" tabindex="-1"></a>                          model.att_drug,</span>
-<span id="cb9-7"><a href="#cb9-7" aria-hidden="true" tabindex="-1"></a>                          model.att_unitc,</span>
-<span id="cb9-8"><a href="#cb9-8" aria-hidden="true" tabindex="-1"></a>                          model.drug_unitc,</span>
-<span id="cb9-9"><a href="#cb9-9" aria-hidden="true" tabindex="-1"></a>                          model.att_drug_unitc)</span>
-<span id="cb9-10"><a href="#cb9-10" aria-hidden="true" tabindex="-1"></a><span class="fu">tidy</span>(model.comparison)</span></code></pre></div>
+<div class="sourceCode" id="cb10"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a><span class="co"># compare model fits</span></span>
+<span id="cb10-2"><a href="#cb10-2" aria-hidden="true" tabindex="-1"></a>model.comparison <span class="ot">&lt;-</span> <span class="fu">anova</span>(model.base,</span>
+<span id="cb10-3"><a href="#cb10-3" aria-hidden="true" tabindex="-1"></a>                          model.att,</span>
+<span id="cb10-4"><a href="#cb10-4" aria-hidden="true" tabindex="-1"></a>                          model.drug,</span>
+<span id="cb10-5"><a href="#cb10-5" aria-hidden="true" tabindex="-1"></a>                          model.unitc,</span>
+<span id="cb10-6"><a href="#cb10-6" aria-hidden="true" tabindex="-1"></a>                          model.att_drug,</span>
+<span id="cb10-7"><a href="#cb10-7" aria-hidden="true" tabindex="-1"></a>                          model.att_unitc,</span>
+<span id="cb10-8"><a href="#cb10-8" aria-hidden="true" tabindex="-1"></a>                          model.drug_unitc,</span>
+<span id="cb10-9"><a href="#cb10-9" aria-hidden="true" tabindex="-1"></a>                          model.att_drug_unitc)</span>
+<span id="cb10-10"><a href="#cb10-10" aria-hidden="true" tabindex="-1"></a><span class="fu">tidy</span>(model.comparison)</span></code></pre></div>
 <pre><code>## Warning in tidy.anova(model.comparison): The following column names in ANOVA
 ## output were not recognized or transformed: npar
 
@@ -224,96 +243,147 @@ body {
 ## 8 model.att_drug_uni~    10  135.  154.  -57.3     115.   5.26e-1     1  0.468</code></pre>
 <h3 id="coefficient-confidence-intervals">coefficient confidence intervals</h3>
 <p>Use robust regression (bootstrap) to obtain confidence intervals</p>
-<div class="sourceCode" id="cb11"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a><span class="co"># run bootstrap to produce 95% confidence intervals</span></span>
-<span id="cb11-2"><a href="#cb11-2" aria-hidden="true" tabindex="-1"></a><span class="fu">confint</span>(model.att_drug_unitc, <span class="at">level =</span> <span class="fl">0.95</span>,</span>
-<span id="cb11-3"><a href="#cb11-3" aria-hidden="true" tabindex="-1"></a>        <span class="at">method =</span> <span class="st">&quot;boot&quot;</span>,</span>
-<span id="cb11-4"><a href="#cb11-4" aria-hidden="true" tabindex="-1"></a>        <span class="at">nsim =</span> <span class="dv">5000</span>,</span>
-<span id="cb11-5"><a href="#cb11-5" aria-hidden="true" tabindex="-1"></a>        <span class="at">boot.type =</span> <span class="fu">c</span>(<span class="st">&quot;perc&quot;</span>,<span class="st">&quot;basic&quot;</span>,<span class="st">&quot;norm&quot;</span>),</span>
-<span id="cb11-6"><a href="#cb11-6" aria-hidden="true" tabindex="-1"></a>        <span class="at">FUN =</span> <span class="cn">NULL</span>, <span class="at">quiet =</span> <span class="cn">FALSE</span>,</span>
-<span id="cb11-7"><a href="#cb11-7" aria-hidden="true" tabindex="-1"></a>        <span class="at">oldNames =</span> <span class="cn">TRUE</span>,</span>
-<span id="cb11-8"><a href="#cb11-8" aria-hidden="true" tabindex="-1"></a>        <span class="at">cl =</span> clus)</span></code></pre></div>
+<div class="sourceCode" id="cb12"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a><span class="co"># run bootstrap to produce 95% confidence intervals</span></span>
+<span id="cb12-2"><a href="#cb12-2" aria-hidden="true" tabindex="-1"></a>knitr<span class="sc">::</span><span class="fu">kable</span>(<span class="fu">confint</span>(model.att_drug_unitc, <span class="at">level =</span> <span class="fl">0.95</span>,</span>
+<span id="cb12-3"><a href="#cb12-3" aria-hidden="true" tabindex="-1"></a>                     <span class="at">method =</span> <span class="st">&quot;boot&quot;</span>,</span>
+<span id="cb12-4"><a href="#cb12-4" aria-hidden="true" tabindex="-1"></a>                     <span class="at">nsim =</span> <span class="dv">5000</span>,</span>
+<span id="cb12-5"><a href="#cb12-5" aria-hidden="true" tabindex="-1"></a>                     <span class="at">boot.type =</span> <span class="fu">c</span>(<span class="st">&quot;perc&quot;</span>,<span class="st">&quot;basic&quot;</span>,<span class="st">&quot;norm&quot;</span>),</span>
+<span id="cb12-6"><a href="#cb12-6" aria-hidden="true" tabindex="-1"></a>                     <span class="at">FUN =</span> <span class="cn">NULL</span>, <span class="at">quiet =</span> <span class="cn">FALSE</span>,</span>
+<span id="cb12-7"><a href="#cb12-7" aria-hidden="true" tabindex="-1"></a>                     <span class="at">oldNames =</span> <span class="cn">TRUE</span>,</span>
+<span id="cb12-8"><a href="#cb12-8" aria-hidden="true" tabindex="-1"></a>                     <span class="at">cl =</span> clus</span>
+<span id="cb12-9"><a href="#cb12-9" aria-hidden="true" tabindex="-1"></a>                     )</span>
+<span id="cb12-10"><a href="#cb12-10" aria-hidden="true" tabindex="-1"></a>             )</span></code></pre></div>
 <pre><code>## Computing bootstrap confidence intervals ...
 
 ## 
-## 1 warning(s): Model failed to converge with max|grad| = 0.00212788 (tol = 0.002, component 1)
-
-##                                        2.5 %        97.5 %
-## .sig01                           0.555358875  1.3379965588
-## .sigma                           0.342749427  0.5631771846
-## (Intercept)                     -2.069004977 -0.7169363505
-## attention1                      -0.292871541  0.0175601900
-## drug_on1                         0.002140153  0.3207944807
-## unit_class1                     -0.406714130  0.9555132033
-## attention1:drug_on1             -0.033992206  0.2786490310
-## attention1:unit_class1          -0.157077306  0.1513709276
-## drug_on1:unit_class1            -0.317828574  0.0009317359
-## attention1:drug_on1:unit_class1 -0.220708279  0.1023483207</code></pre>
+## 2 warning(s): Model failed to converge with max|grad| = 0.00212916 (tol = 0.002, component 1) (and others)</code></pre>
+<table>
+<thead>
+<tr class="header">
+<th align="left"></th>
+<th align="right">2.5 %</th>
+<th align="right">97.5 %</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="left">.sig01</td>
+<td align="right">0.5430268</td>
+<td align="right">1.3383047</td>
+</tr>
+<tr class="even">
+<td align="left">.sigma</td>
+<td align="right">0.3391767</td>
+<td align="right">0.5588837</td>
+</tr>
+<tr class="odd">
+<td align="left">(Intercept)</td>
+<td align="right">-2.0956700</td>
+<td align="right">-0.7424617</td>
+</tr>
+<tr class="even">
+<td align="left">attention1</td>
+<td align="right">-0.2950011</td>
+<td align="right">0.0214531</td>
+</tr>
+<tr class="odd">
+<td align="left">drug_on1</td>
+<td align="right">0.0004315</td>
+<td align="right">0.3161286</td>
+</tr>
+<tr class="even">
+<td align="left">unit_class1</td>
+<td align="right">-0.3996869</td>
+<td align="right">0.9097055</td>
+</tr>
+<tr class="odd">
+<td align="left">attention1:drug_on1</td>
+<td align="right">-0.0373195</td>
+<td align="right">0.2826852</td>
+</tr>
+<tr class="even">
+<td align="left">attention1:unit_class1</td>
+<td align="right">-0.1643438</td>
+<td align="right">0.1559414</td>
+</tr>
+<tr class="odd">
+<td align="left">drug_on1:unit_class1</td>
+<td align="right">-0.3081130</td>
+<td align="right">0.0010687</td>
+</tr>
+<tr class="even">
+<td align="left">attention1:drug_on1:unit_class1</td>
+<td align="right">-0.2102081</td>
+<td align="right">0.0971219</td>
+</tr>
+</tbody>
+</table>
 <h3 id="parametric-bootstrap-model-fits">parametric bootstrap model fits</h3>
 <p>We check the model comparisons using parametric bootstrap to control for Type I errors, as described in the paper <a href="https://www.jstatsoft.org/article/view/v059i09">“A Kenward-Roger Approximation and Parametric Bootstrap Methods for Tests in Linear Mixed Models The R Package pbkrtest”</a>.</p>
-<div class="sourceCode" id="cb13"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a><span class="co"># check whether params$dependent_variable has NA values. Bootstrap does not work with NA values</span></span>
-<span id="cb13-2"><a href="#cb13-2" aria-hidden="true" tabindex="-1"></a>populationdata_na <span class="ot">&lt;-</span> populationdata[<span class="fu">complete.cases</span>(populationdata),]</span>
-<span id="cb13-3"><a href="#cb13-3" aria-hidden="true" tabindex="-1"></a><span class="co"># na.omit(populationdata)</span></span>
-<span id="cb13-4"><a href="#cb13-4" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb13-5"><a href="#cb13-5" aria-hidden="true" tabindex="-1"></a><span class="co"># run models again without NA values</span></span>
-<span id="cb13-6"><a href="#cb13-6" aria-hidden="true" tabindex="-1"></a><span class="co">#intercept only</span></span>
-<span id="cb13-7"><a href="#cb13-7" aria-hidden="true" tabindex="-1"></a>model_na.base <span class="ot">&lt;-</span> lmerTest<span class="sc">::</span><span class="fu">lmer</span>(<span class="at">formula =</span> <span class="fu">formula</span>(<span class="fu">paste</span>(params<span class="sc">$</span>dependent_variable,<span class="st">&quot; ~ 1 + (1|unit)&quot;</span>)),</span>
-<span id="cb13-8"><a href="#cb13-8" aria-hidden="true" tabindex="-1"></a>                             <span class="at">data =</span> populationdata_na,</span>
-<span id="cb13-9"><a href="#cb13-9" aria-hidden="true" tabindex="-1"></a>                             <span class="at">na.action =</span> na.omit,</span>
-<span id="cb13-10"><a href="#cb13-10" aria-hidden="true" tabindex="-1"></a>                             <span class="at">REML =</span> <span class="cn">FALSE</span>)</span>
-<span id="cb13-11"><a href="#cb13-11" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb13-12"><a href="#cb13-12" aria-hidden="true" tabindex="-1"></a><span class="co"># main effects</span></span>
-<span id="cb13-13"><a href="#cb13-13" aria-hidden="true" tabindex="-1"></a>model_na.att <span class="ot">&lt;-</span> <span class="fu">update</span>(model_na.base, .<span class="sc">~</span>. <span class="sc">+</span> attention)</span>
-<span id="cb13-14"><a href="#cb13-14" aria-hidden="true" tabindex="-1"></a>model_na.drug <span class="ot">&lt;-</span> <span class="fu">update</span>(model_na.att, .<span class="sc">~</span>. <span class="sc">+</span> drug_on)</span>
-<span id="cb13-15"><a href="#cb13-15" aria-hidden="true" tabindex="-1"></a>model_na.unitc <span class="ot">&lt;-</span> <span class="fu">update</span>(model_na.drug, .<span class="sc">~</span>. <span class="sc">+</span> unit_class)</span>
-<span id="cb13-16"><a href="#cb13-16" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb13-17"><a href="#cb13-17" aria-hidden="true" tabindex="-1"></a><span class="co"># interaction</span></span>
-<span id="cb13-18"><a href="#cb13-18" aria-hidden="true" tabindex="-1"></a>model_na.att_drug <span class="ot">&lt;-</span> <span class="fu">update</span>(model_na.unitc, .<span class="sc">~</span>. <span class="sc">+</span> attention<span class="sc">*</span>drug_on)</span>
-<span id="cb13-19"><a href="#cb13-19" aria-hidden="true" tabindex="-1"></a>model_na.att_unitc <span class="ot">&lt;-</span> <span class="fu">update</span>(model_na.att_drug, .<span class="sc">~</span>. <span class="sc">+</span> attention<span class="sc">*</span>unit_class)</span>
-<span id="cb13-20"><a href="#cb13-20" aria-hidden="true" tabindex="-1"></a>model_na.drug_unitc <span class="ot">&lt;-</span> <span class="fu">update</span>(model_na.att_unitc, .<span class="sc">~</span>. <span class="sc">+</span> drug_on<span class="sc">*</span>unit_class)</span>
-<span id="cb13-21"><a href="#cb13-21" aria-hidden="true" tabindex="-1"></a>model_na.att_drug_unitc <span class="ot">&lt;-</span> <span class="fu">update</span>(model_na.att_unitc, .<span class="sc">~</span>. <span class="sc">+</span> attention<span class="sc">*</span>drug_on<span class="sc">*</span>unit_class)</span>
-<span id="cb13-22"><a href="#cb13-22" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb13-23"><a href="#cb13-23" aria-hidden="true" tabindex="-1"></a><span class="co"># run on multiple cores</span></span>
-<span id="cb13-24"><a href="#cb13-24" aria-hidden="true" tabindex="-1"></a>nc <span class="ot">&lt;-</span> parallel<span class="sc">::</span><span class="fu">detectCores</span>()</span>
-<span id="cb13-25"><a href="#cb13-25" aria-hidden="true" tabindex="-1"></a>clus <span class="ot">&lt;-</span> parallel<span class="sc">::</span><span class="fu">makeCluster</span>(<span class="fu">rep</span>(<span class="st">&quot;localhost&quot;</span>, nc))</span>
-<span id="cb13-26"><a href="#cb13-26" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb13-27"><a href="#cb13-27" aria-hidden="true" tabindex="-1"></a>bootstrap.att <span class="ot">&lt;-</span> pbkrtest<span class="sc">::</span><span class="fu">PBmodcomp</span>(model_na.att, model_na.base, <span class="at">cl =</span> clus)</span>
-<span id="cb13-28"><a href="#cb13-28" aria-hidden="true" tabindex="-1"></a>bootstrap.drug <span class="ot">&lt;-</span> pbkrtest<span class="sc">::</span><span class="fu">PBmodcomp</span>(model_na.drug, model_na.att, <span class="at">cl =</span> clus)</span>
-<span id="cb13-29"><a href="#cb13-29" aria-hidden="true" tabindex="-1"></a>bootstrap.unitc <span class="ot">&lt;-</span> pbkrtest<span class="sc">::</span><span class="fu">PBmodcomp</span>(model_na.unitc, model_na.drug, <span class="at">cl =</span> clus)</span>
-<span id="cb13-30"><a href="#cb13-30" aria-hidden="true" tabindex="-1"></a>bootstrap.att_drug <span class="ot">&lt;-</span> pbkrtest<span class="sc">::</span><span class="fu">PBmodcomp</span>(model_na.att_drug, model_na.unitc, <span class="at">cl =</span> clus)</span>
-<span id="cb13-31"><a href="#cb13-31" aria-hidden="true" tabindex="-1"></a>bootstrap.att_unitc <span class="ot">&lt;-</span> pbkrtest<span class="sc">::</span><span class="fu">PBmodcomp</span>(model_na.att_unitc, model_na.att_drug, <span class="at">cl =</span> clus)</span>
-<span id="cb13-32"><a href="#cb13-32" aria-hidden="true" tabindex="-1"></a>bootstrap.drug_unitc <span class="ot">&lt;-</span> pbkrtest<span class="sc">::</span><span class="fu">PBmodcomp</span>(model_na.drug_unitc, model_na.att_unitc, <span class="at">cl =</span> clus)</span>
-<span id="cb13-33"><a href="#cb13-33" aria-hidden="true" tabindex="-1"></a>bootstrap.att_drug_unitc <span class="ot">&lt;-</span> pbkrtest<span class="sc">::</span><span class="fu">PBmodcomp</span>(model_na.att_drug_unitc, model_na.drug_unitc, <span class="at">cl =</span> clus)</span>
-<span id="cb13-34"><a href="#cb13-34" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb13-35"><a href="#cb13-35" aria-hidden="true" tabindex="-1"></a><span class="fu">tibble</span>(</span>
-<span id="cb13-36"><a href="#cb13-36" aria-hidden="true" tabindex="-1"></a>  <span class="at">id =</span> <span class="fu">c</span>(<span class="st">&quot;bootstrap.att&quot;</span>, <span class="st">&quot;bootstrap.drug&quot;</span>, <span class="st">&quot;bootstrap.unitc&quot;</span>, <span class="st">&quot;bootstrap.att_drug&quot;</span>,<span class="st">&quot;bootstrap.att_unitc&quot;</span>,<span class="st">&quot;bootstrap.drug_unitc&quot;</span>,<span class="st">&quot;bootstrap.att_drug_unitc&quot;</span>),</span>
-<span id="cb13-37"><a href="#cb13-37" aria-hidden="true" tabindex="-1"></a>  <span class="at">p =</span> <span class="fu">c</span>(bootstrap.att<span class="sc">$</span>test<span class="sc">$</span>p.value[<span class="dv">1</span>], bootstrap.drug<span class="sc">$</span>test<span class="sc">$</span>p.value[<span class="dv">1</span>], bootstrap.unitc<span class="sc">$</span>test<span class="sc">$</span>p.value[<span class="dv">1</span>], bootstrap.att_drug<span class="sc">$</span>test<span class="sc">$</span>p.value[<span class="dv">1</span>], bootstrap.att_unitc<span class="sc">$</span>test<span class="sc">$</span>p.value[<span class="dv">1</span>], bootstrap.drug_unitc<span class="sc">$</span>test<span class="sc">$</span>p.value[<span class="dv">1</span>], bootstrap.att_drug_unitc<span class="sc">$</span>test<span class="sc">$</span>p.value[<span class="dv">1</span>]),</span>
-<span id="cb13-38"><a href="#cb13-38" aria-hidden="true" tabindex="-1"></a>  <span class="at">bootp =</span> <span class="fu">c</span>(bootstrap.att<span class="sc">$</span>test<span class="sc">$</span>p.value[<span class="dv">2</span>], bootstrap.drug<span class="sc">$</span>test<span class="sc">$</span>p.value[<span class="dv">2</span>], bootstrap.unitc<span class="sc">$</span>test<span class="sc">$</span>p.value[<span class="dv">2</span>], bootstrap.att_drug<span class="sc">$</span>test<span class="sc">$</span>p.value[<span class="dv">2</span>], bootstrap.att_unitc<span class="sc">$</span>test<span class="sc">$</span>p.value[<span class="dv">2</span>], bootstrap.drug_unitc<span class="sc">$</span>test<span class="sc">$</span>p.value[<span class="dv">2</span>], bootstrap.att_drug_unitc<span class="sc">$</span>test<span class="sc">$</span>p.value[<span class="dv">2</span>]),</span>
-<span id="cb13-39"><a href="#cb13-39" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div>
+<div class="sourceCode" id="cb14"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true" tabindex="-1"></a><span class="co"># check whether params$dependent_variable has NA values. Bootstrap does not work with NA values</span></span>
+<span id="cb14-2"><a href="#cb14-2" aria-hidden="true" tabindex="-1"></a>populationdata_na <span class="ot">&lt;-</span> populationdata[<span class="fu">complete.cases</span>(populationdata),]</span>
+<span id="cb14-3"><a href="#cb14-3" aria-hidden="true" tabindex="-1"></a><span class="co"># na.omit(populationdata)</span></span>
+<span id="cb14-4"><a href="#cb14-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb14-5"><a href="#cb14-5" aria-hidden="true" tabindex="-1"></a><span class="co"># run models again without NA values</span></span>
+<span id="cb14-6"><a href="#cb14-6" aria-hidden="true" tabindex="-1"></a><span class="co">#intercept only</span></span>
+<span id="cb14-7"><a href="#cb14-7" aria-hidden="true" tabindex="-1"></a>model_na.base <span class="ot">&lt;-</span> lmerTest<span class="sc">::</span><span class="fu">lmer</span>(<span class="at">formula =</span> <span class="fu">formula</span>(<span class="fu">paste</span>(params<span class="sc">$</span>dependent_variable,<span class="st">&quot; ~ 1 + (1|unit)&quot;</span>)),</span>
+<span id="cb14-8"><a href="#cb14-8" aria-hidden="true" tabindex="-1"></a>                             <span class="at">data =</span> populationdata_na,</span>
+<span id="cb14-9"><a href="#cb14-9" aria-hidden="true" tabindex="-1"></a>                             <span class="at">na.action =</span> na.omit,</span>
+<span id="cb14-10"><a href="#cb14-10" aria-hidden="true" tabindex="-1"></a>                             <span class="at">REML =</span> <span class="cn">FALSE</span>)</span>
+<span id="cb14-11"><a href="#cb14-11" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb14-12"><a href="#cb14-12" aria-hidden="true" tabindex="-1"></a><span class="co"># main effects</span></span>
+<span id="cb14-13"><a href="#cb14-13" aria-hidden="true" tabindex="-1"></a>model_na.att <span class="ot">&lt;-</span> <span class="fu">update</span>(model_na.base, .<span class="sc">~</span>. <span class="sc">+</span> attention)</span>
+<span id="cb14-14"><a href="#cb14-14" aria-hidden="true" tabindex="-1"></a>model_na.drug <span class="ot">&lt;-</span> <span class="fu">update</span>(model_na.att, .<span class="sc">~</span>. <span class="sc">+</span> drug_on)</span>
+<span id="cb14-15"><a href="#cb14-15" aria-hidden="true" tabindex="-1"></a>model_na.unitc <span class="ot">&lt;-</span> <span class="fu">update</span>(model_na.drug, .<span class="sc">~</span>. <span class="sc">+</span> unit_class)</span>
+<span id="cb14-16"><a href="#cb14-16" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb14-17"><a href="#cb14-17" aria-hidden="true" tabindex="-1"></a><span class="co"># interaction</span></span>
+<span id="cb14-18"><a href="#cb14-18" aria-hidden="true" tabindex="-1"></a>model_na.att_drug <span class="ot">&lt;-</span> <span class="fu">update</span>(model_na.unitc, .<span class="sc">~</span>. <span class="sc">+</span> attention<span class="sc">*</span>drug_on)</span>
+<span id="cb14-19"><a href="#cb14-19" aria-hidden="true" tabindex="-1"></a>model_na.att_unitc <span class="ot">&lt;-</span> <span class="fu">update</span>(model_na.att_drug, .<span class="sc">~</span>. <span class="sc">+</span> attention<span class="sc">*</span>unit_class)</span>
+<span id="cb14-20"><a href="#cb14-20" aria-hidden="true" tabindex="-1"></a>model_na.drug_unitc <span class="ot">&lt;-</span> <span class="fu">update</span>(model_na.att_unitc, .<span class="sc">~</span>. <span class="sc">+</span> drug_on<span class="sc">*</span>unit_class)</span>
+<span id="cb14-21"><a href="#cb14-21" aria-hidden="true" tabindex="-1"></a>model_na.att_drug_unitc <span class="ot">&lt;-</span> <span class="fu">update</span>(model_na.att_unitc, .<span class="sc">~</span>. <span class="sc">+</span> attention<span class="sc">*</span>drug_on<span class="sc">*</span>unit_class)</span>
+<span id="cb14-22"><a href="#cb14-22" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb14-23"><a href="#cb14-23" aria-hidden="true" tabindex="-1"></a><span class="co"># run on multiple cores</span></span>
+<span id="cb14-24"><a href="#cb14-24" aria-hidden="true" tabindex="-1"></a>nc <span class="ot">&lt;-</span> parallel<span class="sc">::</span><span class="fu">detectCores</span>()</span>
+<span id="cb14-25"><a href="#cb14-25" aria-hidden="true" tabindex="-1"></a>clus <span class="ot">&lt;-</span> parallel<span class="sc">::</span><span class="fu">makeCluster</span>(<span class="fu">rep</span>(<span class="st">&quot;localhost&quot;</span>, nc))</span>
+<span id="cb14-26"><a href="#cb14-26" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb14-27"><a href="#cb14-27" aria-hidden="true" tabindex="-1"></a>bootstrap.att <span class="ot">&lt;-</span> pbkrtest<span class="sc">::</span><span class="fu">PBmodcomp</span>(model_na.att, model_na.base, <span class="at">cl =</span> clus)</span>
+<span id="cb14-28"><a href="#cb14-28" aria-hidden="true" tabindex="-1"></a>bootstrap.drug <span class="ot">&lt;-</span> pbkrtest<span class="sc">::</span><span class="fu">PBmodcomp</span>(model_na.drug, model_na.att, <span class="at">cl =</span> clus)</span>
+<span id="cb14-29"><a href="#cb14-29" aria-hidden="true" tabindex="-1"></a>bootstrap.unitc <span class="ot">&lt;-</span> pbkrtest<span class="sc">::</span><span class="fu">PBmodcomp</span>(model_na.unitc, model_na.drug, <span class="at">cl =</span> clus)</span>
+<span id="cb14-30"><a href="#cb14-30" aria-hidden="true" tabindex="-1"></a>bootstrap.att_drug <span class="ot">&lt;-</span> pbkrtest<span class="sc">::</span><span class="fu">PBmodcomp</span>(model_na.att_drug, model_na.unitc, <span class="at">cl =</span> clus)</span>
+<span id="cb14-31"><a href="#cb14-31" aria-hidden="true" tabindex="-1"></a>bootstrap.att_unitc <span class="ot">&lt;-</span> pbkrtest<span class="sc">::</span><span class="fu">PBmodcomp</span>(model_na.att_unitc, model_na.att_drug, <span class="at">cl =</span> clus)</span>
+<span id="cb14-32"><a href="#cb14-32" aria-hidden="true" tabindex="-1"></a>bootstrap.drug_unitc <span class="ot">&lt;-</span> pbkrtest<span class="sc">::</span><span class="fu">PBmodcomp</span>(model_na.drug_unitc, model_na.att_unitc, <span class="at">cl =</span> clus)</span>
+<span id="cb14-33"><a href="#cb14-33" aria-hidden="true" tabindex="-1"></a>bootstrap.att_drug_unitc <span class="ot">&lt;-</span> pbkrtest<span class="sc">::</span><span class="fu">PBmodcomp</span>(model_na.att_drug_unitc, model_na.drug_unitc, <span class="at">cl =</span> clus)</span>
+<span id="cb14-34"><a href="#cb14-34" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb14-35"><a href="#cb14-35" aria-hidden="true" tabindex="-1"></a><span class="fu">tibble</span>(</span>
+<span id="cb14-36"><a href="#cb14-36" aria-hidden="true" tabindex="-1"></a>  <span class="at">id =</span> <span class="fu">c</span>(<span class="st">&quot;bootstrap.att&quot;</span>, <span class="st">&quot;bootstrap.drug&quot;</span>, <span class="st">&quot;bootstrap.unitc&quot;</span>, <span class="st">&quot;bootstrap.att_drug&quot;</span>,<span class="st">&quot;bootstrap.att_unitc&quot;</span>,<span class="st">&quot;bootstrap.drug_unitc&quot;</span>,<span class="st">&quot;bootstrap.att_drug_unitc&quot;</span>),</span>
+<span id="cb14-37"><a href="#cb14-37" aria-hidden="true" tabindex="-1"></a>  <span class="at">p =</span> <span class="fu">c</span>(bootstrap.att<span class="sc">$</span>test<span class="sc">$</span>p.value[<span class="dv">1</span>], bootstrap.drug<span class="sc">$</span>test<span class="sc">$</span>p.value[<span class="dv">1</span>], bootstrap.unitc<span class="sc">$</span>test<span class="sc">$</span>p.value[<span class="dv">1</span>], bootstrap.att_drug<span class="sc">$</span>test<span class="sc">$</span>p.value[<span class="dv">1</span>], bootstrap.att_unitc<span class="sc">$</span>test<span class="sc">$</span>p.value[<span class="dv">1</span>], bootstrap.drug_unitc<span class="sc">$</span>test<span class="sc">$</span>p.value[<span class="dv">1</span>], bootstrap.att_drug_unitc<span class="sc">$</span>test<span class="sc">$</span>p.value[<span class="dv">1</span>]),</span>
+<span id="cb14-38"><a href="#cb14-38" aria-hidden="true" tabindex="-1"></a>  <span class="at">bootp =</span> <span class="fu">c</span>(bootstrap.att<span class="sc">$</span>test<span class="sc">$</span>p.value[<span class="dv">2</span>], bootstrap.drug<span class="sc">$</span>test<span class="sc">$</span>p.value[<span class="dv">2</span>], bootstrap.unitc<span class="sc">$</span>test<span class="sc">$</span>p.value[<span class="dv">2</span>], bootstrap.att_drug<span class="sc">$</span>test<span class="sc">$</span>p.value[<span class="dv">2</span>], bootstrap.att_unitc<span class="sc">$</span>test<span class="sc">$</span>p.value[<span class="dv">2</span>], bootstrap.drug_unitc<span class="sc">$</span>test<span class="sc">$</span>p.value[<span class="dv">2</span>], bootstrap.att_drug_unitc<span class="sc">$</span>test<span class="sc">$</span>p.value[<span class="dv">2</span>]),</span>
+<span id="cb14-39"><a href="#cb14-39" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div>
 <pre><code>## # A tibble: 7 x 3
 ##   id                             p   bootp
 ##   &lt;chr&gt;                      &lt;dbl&gt;   &lt;dbl&gt;
-## 1 bootstrap.att            0.0387  0.0509 
-## 2 bootstrap.drug           0.00137 0.00200
-## 3 bootstrap.unitc          0.549   0.592  
-## 4 bootstrap.att_drug       0.222   0.234  
-## 5 bootstrap.att_unitc      0.931   0.926  
-## 6 bootstrap.drug_unitc     0.0433  0.0649 
+## 1 bootstrap.att            0.0387  0.0390 
+## 2 bootstrap.drug           0.00137 0.00599
+## 3 bootstrap.unitc          0.549   0.577  
+## 4 bootstrap.att_drug       0.222   0.254  
+## 5 bootstrap.att_unitc      0.931   0.940  
+## 6 bootstrap.drug_unitc     0.0433  0.0629 
 ## 7 bootstrap.att_drug_unitc 0.963   0.968</code></pre>
 <h3 id="kenward-roger-approximation">Kenward-roger approximation</h3>
 <p>We check the model comparisons using the Kenward-roger approximation for performing F-tests to control for Type I errors, as described in the paper <a href="https://www.jstatsoft.org/article/view/v059i09">“A Kenward-Roger Approximation and Parametric Bootstrap Methods for Tests in Linear Mixed Models The R Package pbkrtest”</a>.</p>
-<div class="sourceCode" id="cb15"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb15-1"><a href="#cb15-1" aria-hidden="true" tabindex="-1"></a>KR.att <span class="ot">&lt;-</span> pbkrtest<span class="sc">::</span><span class="fu">KRmodcomp</span>(model.att, model.base)</span>
-<span id="cb15-2"><a href="#cb15-2" aria-hidden="true" tabindex="-1"></a>KR.drug <span class="ot">&lt;-</span> pbkrtest<span class="sc">::</span><span class="fu">KRmodcomp</span>(model.drug, model.att)</span>
-<span id="cb15-3"><a href="#cb15-3" aria-hidden="true" tabindex="-1"></a>KR.unitc <span class="ot">&lt;-</span> pbkrtest<span class="sc">::</span><span class="fu">KRmodcomp</span>(model.unitc, model.drug)</span>
-<span id="cb15-4"><a href="#cb15-4" aria-hidden="true" tabindex="-1"></a>KR.att_drug <span class="ot">&lt;-</span> pbkrtest<span class="sc">::</span><span class="fu">KRmodcomp</span>(model.att_drug, model.unitc)</span>
-<span id="cb15-5"><a href="#cb15-5" aria-hidden="true" tabindex="-1"></a>KR.att_unitc <span class="ot">&lt;-</span> pbkrtest<span class="sc">::</span><span class="fu">KRmodcomp</span>(model.att_unitc, model.att_drug)</span>
-<span id="cb15-6"><a href="#cb15-6" aria-hidden="true" tabindex="-1"></a>KR.drug_unitc <span class="ot">&lt;-</span> pbkrtest<span class="sc">::</span><span class="fu">KRmodcomp</span>(model.drug_unitc, model.att_unitc)</span>
-<span id="cb15-7"><a href="#cb15-7" aria-hidden="true" tabindex="-1"></a>KR.att_drug_unitc <span class="ot">&lt;-</span> pbkrtest<span class="sc">::</span><span class="fu">KRmodcomp</span>(model.att_drug_unitc, model.drug_unitc)</span>
-<span id="cb15-8"><a href="#cb15-8" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb15-9"><a href="#cb15-9" aria-hidden="true" tabindex="-1"></a><span class="fu">tibble</span>(</span>
-<span id="cb15-10"><a href="#cb15-10" aria-hidden="true" tabindex="-1"></a>  <span class="at">id =</span> <span class="fu">c</span>(<span class="st">&quot;KR.att&quot;</span>, <span class="st">&quot;KR.drug&quot;</span>, <span class="st">&quot;KR.unitc&quot;</span>, <span class="st">&quot;KR.att_drug&quot;</span>,<span class="st">&quot;KR.att_unitc&quot;</span>,<span class="st">&quot;KR.drug_unitc&quot;</span>,<span class="st">&quot;KR.att_drug_unitc&quot;</span>),</span>
-<span id="cb15-11"><a href="#cb15-11" aria-hidden="true" tabindex="-1"></a>  <span class="at">F =</span> <span class="fu">c</span>(KR.att<span class="sc">$</span>stats<span class="sc">$</span>Fstat, KR.drug<span class="sc">$</span>stats<span class="sc">$</span>Fstat, KR.unitc<span class="sc">$</span>stats<span class="sc">$</span>Fstat, KR.att_drug<span class="sc">$</span>stats<span class="sc">$</span>Fstat, KR.att_unitc<span class="sc">$</span>stats<span class="sc">$</span>Fstat, KR.drug_unitc<span class="sc">$</span>stats<span class="sc">$</span>Fstat, KR.att_drug_unitc<span class="sc">$</span>stats<span class="sc">$</span>Fstat),</span>
-<span id="cb15-12"><a href="#cb15-12" aria-hidden="true" tabindex="-1"></a>  <span class="at">p =</span> <span class="fu">c</span>(KR.att<span class="sc">$</span>stats<span class="sc">$</span>p.value, KR.drug<span class="sc">$</span>stats<span class="sc">$</span>p.value, KR.unitc<span class="sc">$</span>stats<span class="sc">$</span>p.value, KR.att_drug<span class="sc">$</span>stats<span class="sc">$</span>p.value, KR.att_unitc<span class="sc">$</span>stats<span class="sc">$</span>p.value, KR.drug_unitc<span class="sc">$</span>stats<span class="sc">$</span>p.value, KR.att_drug_unitc<span class="sc">$</span>stats<span class="sc">$</span>p.value),</span>
-<span id="cb15-13"><a href="#cb15-13" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div>
+<div class="sourceCode" id="cb16"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb16-1"><a href="#cb16-1" aria-hidden="true" tabindex="-1"></a>KR.att <span class="ot">&lt;-</span> pbkrtest<span class="sc">::</span><span class="fu">KRmodcomp</span>(model.att, model.base)</span>
+<span id="cb16-2"><a href="#cb16-2" aria-hidden="true" tabindex="-1"></a>KR.drug <span class="ot">&lt;-</span> pbkrtest<span class="sc">::</span><span class="fu">KRmodcomp</span>(model.drug, model.att)</span>
+<span id="cb16-3"><a href="#cb16-3" aria-hidden="true" tabindex="-1"></a>KR.unitc <span class="ot">&lt;-</span> pbkrtest<span class="sc">::</span><span class="fu">KRmodcomp</span>(model.unitc, model.drug)</span>
+<span id="cb16-4"><a href="#cb16-4" aria-hidden="true" tabindex="-1"></a>KR.att_drug <span class="ot">&lt;-</span> pbkrtest<span class="sc">::</span><span class="fu">KRmodcomp</span>(model.att_drug, model.unitc)</span>
+<span id="cb16-5"><a href="#cb16-5" aria-hidden="true" tabindex="-1"></a>KR.att_unitc <span class="ot">&lt;-</span> pbkrtest<span class="sc">::</span><span class="fu">KRmodcomp</span>(model.att_unitc, model.att_drug)</span>
+<span id="cb16-6"><a href="#cb16-6" aria-hidden="true" tabindex="-1"></a>KR.drug_unitc <span class="ot">&lt;-</span> pbkrtest<span class="sc">::</span><span class="fu">KRmodcomp</span>(model.drug_unitc, model.att_unitc)</span>
+<span id="cb16-7"><a href="#cb16-7" aria-hidden="true" tabindex="-1"></a>KR.att_drug_unitc <span class="ot">&lt;-</span> pbkrtest<span class="sc">::</span><span class="fu">KRmodcomp</span>(model.att_drug_unitc, model.drug_unitc)</span>
+<span id="cb16-8"><a href="#cb16-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb16-9"><a href="#cb16-9" aria-hidden="true" tabindex="-1"></a><span class="fu">tibble</span>(</span>
+<span id="cb16-10"><a href="#cb16-10" aria-hidden="true" tabindex="-1"></a>  <span class="at">id =</span> <span class="fu">c</span>(<span class="st">&quot;KR.att&quot;</span>, <span class="st">&quot;KR.drug&quot;</span>, <span class="st">&quot;KR.unitc&quot;</span>, <span class="st">&quot;KR.att_drug&quot;</span>,<span class="st">&quot;KR.att_unitc&quot;</span>,<span class="st">&quot;KR.drug_unitc&quot;</span>,<span class="st">&quot;KR.att_drug_unitc&quot;</span>),</span>
+<span id="cb16-11"><a href="#cb16-11" aria-hidden="true" tabindex="-1"></a>  <span class="at">F =</span> <span class="fu">c</span>(KR.att<span class="sc">$</span>stats<span class="sc">$</span>Fstat, KR.drug<span class="sc">$</span>stats<span class="sc">$</span>Fstat, KR.unitc<span class="sc">$</span>stats<span class="sc">$</span>Fstat, KR.att_drug<span class="sc">$</span>stats<span class="sc">$</span>Fstat, KR.att_unitc<span class="sc">$</span>stats<span class="sc">$</span>Fstat, KR.drug_unitc<span class="sc">$</span>stats<span class="sc">$</span>Fstat, KR.att_drug_unitc<span class="sc">$</span>stats<span class="sc">$</span>Fstat),</span>
+<span id="cb16-12"><a href="#cb16-12" aria-hidden="true" tabindex="-1"></a>  <span class="at">p =</span> <span class="fu">c</span>(KR.att<span class="sc">$</span>stats<span class="sc">$</span>p.value, KR.drug<span class="sc">$</span>stats<span class="sc">$</span>p.value, KR.unitc<span class="sc">$</span>stats<span class="sc">$</span>p.value, KR.att_drug<span class="sc">$</span>stats<span class="sc">$</span>p.value, KR.att_unitc<span class="sc">$</span>stats<span class="sc">$</span>p.value, KR.drug_unitc<span class="sc">$</span>stats<span class="sc">$</span>p.value, KR.att_drug_unitc<span class="sc">$</span>stats<span class="sc">$</span>p.value),</span>
+<span id="cb16-13"><a href="#cb16-13" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div>
 <pre><code>## # A tibble: 7 x 3
 ##   id                        F       p
 ##   &lt;chr&gt;                 &lt;dbl&gt;   &lt;dbl&gt;
@@ -328,56 +398,195 @@ body {
 <p>Compute bayes factor using BayesFactor package. Detailed description can be found in the paper <a href="https://journals.sagepub.com/doi/10.1177/0149206314560412">An Introduction to Bayesian Hypothesis Testing for Management Research</a>.</p>
 <p>Interpretation of Bayes Factors is defined <a href="https://journals.sagepub.com/doi/10.1177/0149206314560412">here</a> in <a href="https://journals.sagepub.com/na101/home/literatum/publisher/sage/journals/content/joma/2015/joma_41_2/0149206314560412/20161119/images/medium/10.1177_0149206314560412-table1.gif">table 1</a>.</p>
 <p>A nice illustration of the bayes factor is given <a href="https://alexanderetz.com/2015/08/09/understanding-bayes-visualization-of-bf/">here</a>.</p>
-<div class="sourceCode" id="cb17"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb17-1"><a href="#cb17-1" aria-hidden="true" tabindex="-1"></a><span class="co"># number of observations</span></span>
-<span id="cb17-2"><a href="#cb17-2" aria-hidden="true" tabindex="-1"></a>n <span class="ot">=</span> <span class="fu">dim</span>(populationdata)[<span class="dv">1</span>]</span>
-<span id="cb17-3"><a href="#cb17-3" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb17-4"><a href="#cb17-4" aria-hidden="true" tabindex="-1"></a><span class="co"># number of predictors</span></span>
-<span id="cb17-5"><a href="#cb17-5" aria-hidden="true" tabindex="-1"></a>n_pred <span class="ot">=</span> <span class="fu">c</span>(<span class="fu">dim</span>(<span class="fu">coef</span>(model.base)<span class="sc">$</span>unit)[<span class="dv">2</span>],</span>
-<span id="cb17-6"><a href="#cb17-6" aria-hidden="true" tabindex="-1"></a>           <span class="fu">dim</span>(<span class="fu">coef</span>(model.att)<span class="sc">$</span>unit)[<span class="dv">2</span>],</span>
-<span id="cb17-7"><a href="#cb17-7" aria-hidden="true" tabindex="-1"></a>           <span class="fu">dim</span>(<span class="fu">coef</span>(model.drug)<span class="sc">$</span>unit)[<span class="dv">2</span>],</span>
-<span id="cb17-8"><a href="#cb17-8" aria-hidden="true" tabindex="-1"></a>           <span class="fu">dim</span>(<span class="fu">coef</span>(model.unitc)<span class="sc">$</span>unit)[<span class="dv">2</span>],</span>
-<span id="cb17-9"><a href="#cb17-9" aria-hidden="true" tabindex="-1"></a>           <span class="fu">dim</span>(<span class="fu">coef</span>(model.att_drug)<span class="sc">$</span>unit)[<span class="dv">2</span>],</span>
-<span id="cb17-10"><a href="#cb17-10" aria-hidden="true" tabindex="-1"></a>           <span class="fu">dim</span>(<span class="fu">coef</span>(model.att_unitc)<span class="sc">$</span>unit)[<span class="dv">2</span>],</span>
-<span id="cb17-11"><a href="#cb17-11" aria-hidden="true" tabindex="-1"></a>           <span class="fu">dim</span>(<span class="fu">coef</span>(model.drug_unitc)<span class="sc">$</span>unit)[<span class="dv">2</span>],</span>
-<span id="cb17-12"><a href="#cb17-12" aria-hidden="true" tabindex="-1"></a>           <span class="fu">dim</span>(<span class="fu">coef</span>(model.att_drug_unitc)<span class="sc">$</span>unit)[<span class="dv">2</span>])</span>
-<span id="cb17-13"><a href="#cb17-13" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb17-14"><a href="#cb17-14" aria-hidden="true" tabindex="-1"></a><span class="co"># r2_type = 1 # marginal</span></span>
-<span id="cb17-15"><a href="#cb17-15" aria-hidden="true" tabindex="-1"></a>r2_type <span class="ot">=</span> <span class="dv">2</span> <span class="co"># conditional</span></span>
-<span id="cb17-16"><a href="#cb17-16" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb17-17"><a href="#cb17-17" aria-hidden="true" tabindex="-1"></a><span class="co"># get r2</span></span>
-<span id="cb17-18"><a href="#cb17-18" aria-hidden="true" tabindex="-1"></a>r2_model <span class="ot">=</span> <span class="fu">c</span>(<span class="fu">r.squaredGLMM</span>(model.base)[r2_type],</span>
-<span id="cb17-19"><a href="#cb17-19" aria-hidden="true" tabindex="-1"></a>             <span class="fu">r.squaredGLMM</span>(model.att)[r2_type],</span>
-<span id="cb17-20"><a href="#cb17-20" aria-hidden="true" tabindex="-1"></a>             <span class="fu">r.squaredGLMM</span>(model.drug)[r2_type],</span>
-<span id="cb17-21"><a href="#cb17-21" aria-hidden="true" tabindex="-1"></a>             <span class="fu">r.squaredGLMM</span>(model.unitc)[r2_type],</span>
-<span id="cb17-22"><a href="#cb17-22" aria-hidden="true" tabindex="-1"></a>             <span class="fu">r.squaredGLMM</span>(model.att_drug)[r2_type],</span>
-<span id="cb17-23"><a href="#cb17-23" aria-hidden="true" tabindex="-1"></a>             <span class="fu">r.squaredGLMM</span>(model.att_unitc)[r2_type],</span>
-<span id="cb17-24"><a href="#cb17-24" aria-hidden="true" tabindex="-1"></a>             <span class="fu">r.squaredGLMM</span>(model.drug_unitc)[r2_type],</span>
-<span id="cb17-25"><a href="#cb17-25" aria-hidden="true" tabindex="-1"></a>             <span class="fu">r.squaredGLMM</span>(model.att_drug_unitc)[r2_type])</span>
-<span id="cb17-26"><a href="#cb17-26" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb17-27"><a href="#cb17-27" aria-hidden="true" tabindex="-1"></a><span class="co">#compute bayes factor</span></span>
-<span id="cb17-28"><a href="#cb17-28" aria-hidden="true" tabindex="-1"></a>BF <span class="ot">&lt;-</span> <span class="fu">as_tibble</span>(<span class="fu">R2.to.bf</span>(<span class="at">n=</span>n, <span class="at">nPred=</span>n_pred, <span class="at">r2=</span>r2_model))</span>
-<span id="cb17-29"><a href="#cb17-29" aria-hidden="true" tabindex="-1"></a><span class="fu">colnames</span>(BF) <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="st">&quot;Model1&quot;</span>,<span class="st">&quot;Model2&quot;</span>,<span class="st">&quot;BF&quot;</span>)</span>
-<span id="cb17-30"><a href="#cb17-30" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb17-31"><a href="#cb17-31" aria-hidden="true" tabindex="-1"></a><span class="fu">print</span>(<span class="st">&#39;R2 values for each model fit:&#39;</span>)</span>
-<span id="cb17-32"><a href="#cb17-32" aria-hidden="true" tabindex="-1"></a><span class="fu">print</span>(r2_model)</span>
-<span id="cb17-33"><a href="#cb17-33" aria-hidden="true" tabindex="-1"></a><span class="fu">print</span>(BF)</span></code></pre></div>
+<div class="sourceCode" id="cb18"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb18-1"><a href="#cb18-1" aria-hidden="true" tabindex="-1"></a><span class="co"># number of observations</span></span>
+<span id="cb18-2"><a href="#cb18-2" aria-hidden="true" tabindex="-1"></a>n <span class="ot">=</span> <span class="fu">dim</span>(populationdata)[<span class="dv">1</span>]</span>
+<span id="cb18-3"><a href="#cb18-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb18-4"><a href="#cb18-4" aria-hidden="true" tabindex="-1"></a><span class="co"># number of predictors</span></span>
+<span id="cb18-5"><a href="#cb18-5" aria-hidden="true" tabindex="-1"></a>n_pred <span class="ot">=</span> <span class="fu">c</span>(<span class="fu">dim</span>(<span class="fu">coef</span>(model.base)<span class="sc">$</span>unit)[<span class="dv">2</span>],</span>
+<span id="cb18-6"><a href="#cb18-6" aria-hidden="true" tabindex="-1"></a>           <span class="fu">dim</span>(<span class="fu">coef</span>(model.att)<span class="sc">$</span>unit)[<span class="dv">2</span>],</span>
+<span id="cb18-7"><a href="#cb18-7" aria-hidden="true" tabindex="-1"></a>           <span class="fu">dim</span>(<span class="fu">coef</span>(model.drug)<span class="sc">$</span>unit)[<span class="dv">2</span>],</span>
+<span id="cb18-8"><a href="#cb18-8" aria-hidden="true" tabindex="-1"></a>           <span class="fu">dim</span>(<span class="fu">coef</span>(model.unitc)<span class="sc">$</span>unit)[<span class="dv">2</span>],</span>
+<span id="cb18-9"><a href="#cb18-9" aria-hidden="true" tabindex="-1"></a>           <span class="fu">dim</span>(<span class="fu">coef</span>(model.att_drug)<span class="sc">$</span>unit)[<span class="dv">2</span>],</span>
+<span id="cb18-10"><a href="#cb18-10" aria-hidden="true" tabindex="-1"></a>           <span class="fu">dim</span>(<span class="fu">coef</span>(model.att_unitc)<span class="sc">$</span>unit)[<span class="dv">2</span>],</span>
+<span id="cb18-11"><a href="#cb18-11" aria-hidden="true" tabindex="-1"></a>           <span class="fu">dim</span>(<span class="fu">coef</span>(model.drug_unitc)<span class="sc">$</span>unit)[<span class="dv">2</span>],</span>
+<span id="cb18-12"><a href="#cb18-12" aria-hidden="true" tabindex="-1"></a>           <span class="fu">dim</span>(<span class="fu">coef</span>(model.att_drug_unitc)<span class="sc">$</span>unit)[<span class="dv">2</span>])</span>
+<span id="cb18-13"><a href="#cb18-13" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb18-14"><a href="#cb18-14" aria-hidden="true" tabindex="-1"></a><span class="co"># r2_type = 1 # marginal</span></span>
+<span id="cb18-15"><a href="#cb18-15" aria-hidden="true" tabindex="-1"></a>r2_type <span class="ot">=</span> <span class="dv">2</span> <span class="co"># conditional</span></span>
+<span id="cb18-16"><a href="#cb18-16" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb18-17"><a href="#cb18-17" aria-hidden="true" tabindex="-1"></a><span class="co"># get r2</span></span>
+<span id="cb18-18"><a href="#cb18-18" aria-hidden="true" tabindex="-1"></a>r2_model <span class="ot">=</span> <span class="fu">c</span>(<span class="fu">r.squaredGLMM</span>(model.base)[r2_type],</span>
+<span id="cb18-19"><a href="#cb18-19" aria-hidden="true" tabindex="-1"></a>             <span class="fu">r.squaredGLMM</span>(model.att)[r2_type],</span>
+<span id="cb18-20"><a href="#cb18-20" aria-hidden="true" tabindex="-1"></a>             <span class="fu">r.squaredGLMM</span>(model.drug)[r2_type],</span>
+<span id="cb18-21"><a href="#cb18-21" aria-hidden="true" tabindex="-1"></a>             <span class="fu">r.squaredGLMM</span>(model.unitc)[r2_type],</span>
+<span id="cb18-22"><a href="#cb18-22" aria-hidden="true" tabindex="-1"></a>             <span class="fu">r.squaredGLMM</span>(model.att_drug)[r2_type],</span>
+<span id="cb18-23"><a href="#cb18-23" aria-hidden="true" tabindex="-1"></a>             <span class="fu">r.squaredGLMM</span>(model.att_unitc)[r2_type],</span>
+<span id="cb18-24"><a href="#cb18-24" aria-hidden="true" tabindex="-1"></a>             <span class="fu">r.squaredGLMM</span>(model.drug_unitc)[r2_type],</span>
+<span id="cb18-25"><a href="#cb18-25" aria-hidden="true" tabindex="-1"></a>             <span class="fu">r.squaredGLMM</span>(model.att_drug_unitc)[r2_type])</span>
+<span id="cb18-26"><a href="#cb18-26" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb18-27"><a href="#cb18-27" aria-hidden="true" tabindex="-1"></a><span class="co">#compute bayes factor</span></span>
+<span id="cb18-28"><a href="#cb18-28" aria-hidden="true" tabindex="-1"></a>BF <span class="ot">&lt;-</span> <span class="fu">as_tibble</span>(<span class="fu">R2.to.bf</span>(<span class="at">n=</span>n, <span class="at">nPred=</span>n_pred, <span class="at">r2=</span>r2_model))</span>
+<span id="cb18-29"><a href="#cb18-29" aria-hidden="true" tabindex="-1"></a><span class="fu">colnames</span>(BF) <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="st">&quot;Model1&quot;</span>,<span class="st">&quot;Model2&quot;</span>,<span class="st">&quot;BF&quot;</span>)</span>
+<span id="cb18-30"><a href="#cb18-30" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb18-31"><a href="#cb18-31" aria-hidden="true" tabindex="-1"></a><span class="fu">print</span>(<span class="st">&#39;R2 values for each model fit:&#39;</span>)</span>
+<span id="cb18-32"><a href="#cb18-32" aria-hidden="true" tabindex="-1"></a><span class="fu">print</span>(r2_model)</span>
+<span id="cb18-33"><a href="#cb18-33" aria-hidden="true" tabindex="-1"></a><span class="co"># print(BF, nrows = 100)</span></span>
+<span id="cb18-34"><a href="#cb18-34" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb18-35"><a href="#cb18-35" aria-hidden="true" tabindex="-1"></a>knitr<span class="sc">::</span><span class="fu">kable</span>(BF)</span></code></pre></div>
 <pre><code>## [1] &quot;R2 values for each model fit:&quot;
 ## [1] 0.7252983 0.7503370 0.8011917 0.8017948 0.8181801 0.8181797 0.8340298
-## [8] 0.8356260
-## # A tibble: 28 x 3
-##    Model1 Model2     BF
-##     &lt;dbl&gt;  &lt;dbl&gt;  &lt;dbl&gt;
-##  1      1      2  1.08 
-##  2      1      3 40.1  
-##  3      1      4  5.05 
-##  4      1      5  5.58 
-##  5      1      6  0.787
-##  6      1      7  1.05 
-##  7      1      8  0.209
-##  8      2      3 37.0  
-##  9      2      4  4.66 
-## 10      2      5  5.15 
-## # ... with 18 more rows</code></pre>
+## [8] 0.8356260</code></pre>
+<table>
+<thead>
+<tr class="header">
+<th align="right">Model1</th>
+<th align="right">Model2</th>
+<th align="right">BF</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="right">1</td>
+<td align="right">2</td>
+<td align="right">1.0838774</td>
+</tr>
+<tr class="even">
+<td align="right">1</td>
+<td align="right">3</td>
+<td align="right">40.0916514</td>
+</tr>
+<tr class="odd">
+<td align="right">1</td>
+<td align="right">4</td>
+<td align="right">5.0456100</td>
+</tr>
+<tr class="even">
+<td align="right">1</td>
+<td align="right">5</td>
+<td align="right">5.5766166</td>
+</tr>
+<tr class="odd">
+<td align="right">1</td>
+<td align="right">6</td>
+<td align="right">0.7872924</td>
+</tr>
+<tr class="even">
+<td align="right">1</td>
+<td align="right">7</td>
+<td align="right">1.0491418</td>
+</tr>
+<tr class="odd">
+<td align="right">1</td>
+<td align="right">8</td>
+<td align="right">0.2094915</td>
+</tr>
+<tr class="even">
+<td align="right">2</td>
+<td align="right">3</td>
+<td align="right">36.9891032</td>
+</tr>
+<tr class="odd">
+<td align="right">2</td>
+<td align="right">4</td>
+<td align="right">4.6551485</td>
+</tr>
+<tr class="even">
+<td align="right">2</td>
+<td align="right">5</td>
+<td align="right">5.1450623</td>
+</tr>
+<tr class="odd">
+<td align="right">2</td>
+<td align="right">6</td>
+<td align="right">0.7263667</td>
+</tr>
+<tr class="even">
+<td align="right">2</td>
+<td align="right">7</td>
+<td align="right">0.9679525</td>
+</tr>
+<tr class="odd">
+<td align="right">2</td>
+<td align="right">8</td>
+<td align="right">0.1932797</td>
+</tr>
+<tr class="even">
+<td align="right">3</td>
+<td align="right">4</td>
+<td align="right">0.1258519</td>
+</tr>
+<tr class="odd">
+<td align="right">3</td>
+<td align="right">5</td>
+<td align="right">0.1390967</td>
+</tr>
+<tr class="even">
+<td align="right">3</td>
+<td align="right">6</td>
+<td align="right">0.0196373</td>
+</tr>
+<tr class="odd">
+<td align="right">3</td>
+<td align="right">7</td>
+<td align="right">0.0261686</td>
+</tr>
+<tr class="even">
+<td align="right">3</td>
+<td align="right">8</td>
+<td align="right">0.0052253</td>
+</tr>
+<tr class="odd">
+<td align="right">4</td>
+<td align="right">5</td>
+<td align="right">1.1052413</td>
+</tr>
+<tr class="even">
+<td align="right">4</td>
+<td align="right">6</td>
+<td align="right">0.1560351</td>
+</tr>
+<tr class="odd">
+<td align="right">4</td>
+<td align="right">7</td>
+<td align="right">0.2079316</td>
+</tr>
+<tr class="even">
+<td align="right">4</td>
+<td align="right">8</td>
+<td align="right">0.0415196</td>
+</tr>
+<tr class="odd">
+<td align="right">5</td>
+<td align="right">6</td>
+<td align="right">0.1411774</td>
+</tr>
+<tr class="even">
+<td align="right">5</td>
+<td align="right">7</td>
+<td align="right">0.1881323</td>
+</tr>
+<tr class="odd">
+<td align="right">5</td>
+<td align="right">8</td>
+<td align="right">0.0375661</td>
+</tr>
+<tr class="even">
+<td align="right">6</td>
+<td align="right">7</td>
+<td align="right">1.3325949</td>
+</tr>
+<tr class="odd">
+<td align="right">6</td>
+<td align="right">8</td>
+<td align="right">0.2660911</td>
+</tr>
+<tr class="even">
+<td align="right">7</td>
+<td align="right">8</td>
+<td align="right">0.1996789</td>
+</tr>
+</tbody>
+</table>
 
 </body>
 </html>

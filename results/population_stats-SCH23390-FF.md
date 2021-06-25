@@ -110,7 +110,27 @@ populationdata$unit <- factor(populationdata$unit, ordered=FALSE)
 populationdata$attention <- C(populationdata$attention, "contr.sum")
 populationdata$drug_on <- C(populationdata$drug_on, "contr.sum")
 populationdata$unit_class <- C(populationdata$unit_class, "contr.sum")
+print(populationdata)
 ```
+
+    ## # A tibble: 56 x 27
+    ##    unit  drug_on  attention  rate    FF   roc      MI   gain gain_log Subject
+    ##    <fct> <fct>    <fct>     <dbl> <dbl> <dbl>   <dbl>  <dbl>    <dbl> <chr>  
+    ##  1 32    Drug off Attend RF 29.2   2.87 0.797  0.207  0.0650   -2.73  W      
+    ##  2 34    Drug off Attend RF 18.2   1.79 0.760  0.197  0.0356   -3.34  W      
+    ##  3 40    Drug off Attend RF 27.7   3.10 0.291 -0.112  0.0703   -2.66  W      
+    ##  4 46    Drug off Attend RF 32.8   1.61 0.837  0.186  0.0177   -4.04  W      
+    ##  5 51    Drug off Attend RF 17.2   4.79 0.737  0.266  0.202    -1.60  W      
+    ##  6 52    Drug off Attend RF 13.2   5.61 0.746  0.310  0.314    -1.16  W      
+    ##  7 54    Drug off Attend RF 17.7   3.82 0.712  0.200  0.150    -1.90  W      
+    ##  8 55    Drug off Attend RF 37.4   3.47 0.562  0.0446 0.0555   -2.89  W      
+    ##  9 57    Drug off Attend RF  8.70  2.71 0.605  0.113  0.219    -1.52  W      
+    ## 10 58    Drug off Attend RF 12.5   4.74 0.737  0.310  0.407    -0.900 W      
+    ## # ... with 46 more rows, and 17 more variables: Task <chr>, Date <date>,
+    ## #   Drug <fct>, EjectCurrent <dbl>, Weight <dbl>, peak_to_trough_time <dbl>,
+    ## #   unit_class <fct>, EjectCurrent_centered <dbl>, s_stim <dbl>, s_att <dbl>,
+    ## #   s_dru <dbl>, s_dir <dbl>, s_att*dru <dbl>, s_att*dir <dbl>,
+    ## #   s_dru*dir <dbl>, s_att*dru*dir <dbl>, attention_drug_on <chr>
 
 ## mixed-level model
 
@@ -243,31 +263,34 @@ Use robust regression (bootstrap) to obtain confidence intervals
 
 ``` r
 # run bootstrap to produce 95% confidence intervals
-confint(model.att_drug_unitc, level = 0.95,
-        method = "boot",
-        nsim = 5000,
-        boot.type = c("perc","basic","norm"),
-        FUN = NULL, quiet = FALSE,
-        oldNames = TRUE,
-        cl = clus)
+knitr::kable(confint(model.att_drug_unitc, level = 0.95,
+                     method = "boot",
+                     nsim = 5000,
+                     boot.type = c("perc","basic","norm"),
+                     FUN = NULL, quiet = FALSE,
+                     oldNames = TRUE,
+                     cl = clus
+                     )
+             )
 ```
 
     ## Computing bootstrap confidence intervals ...
 
     ## 
-    ## 59 message(s): boundary (singular) fit: see ?isSingular
+    ## 64 message(s): boundary (singular) fit: see ?isSingular
 
-    ##                                         2.5 %    97.5 %
-    ## .sig01                           0.3112412667 1.5718104
-    ## .sigma                           0.9926907078 1.5812407
-    ## (Intercept)                      3.4403447191 5.1228886
-    ## attention1                      -0.0043023472 0.8729257
-    ## drug_on1                        -0.3420812502 0.5311390
-    ## unit_class1                     -0.0009630776 1.6826505
-    ## attention1:drug_on1             -0.2542204713 0.6158301
-    ## attention1:unit_class1          -0.1916724806 0.6713054
-    ## drug_on1:unit_class1            -0.7845457529 0.1179412
-    ## attention1:drug_on1:unit_class1 -0.5312551298 0.3566060
+|                                   |      2.5 % |    97.5 % |
+|:----------------------------------|-----------:|----------:|
+| .sig01                            |  0.3051831 | 1.5639787 |
+| .sigma                            |  0.9925304 | 1.5749220 |
+| (Intercept)                       |  3.4747063 | 5.1284204 |
+| attention1                        |  0.0014456 | 0.8922890 |
+| drug\_on1                         | -0.3517185 | 0.5382907 |
+| unit\_class1                      | -0.0023033 | 1.6918016 |
+| attention1:drug\_on1              | -0.2710077 | 0.6108447 |
+| attention1:unit\_class1           | -0.2084533 | 0.6887613 |
+| drug\_on1:unit\_class1            | -0.7872754 | 0.1285314 |
+| attention1:drug\_on1:unit\_class1 | -0.5240162 | 0.3527615 |
 
 ### parametric bootstrap model fits
 
@@ -321,13 +344,13 @@ tibble(
     ## # A tibble: 7 x 3
     ##   id                           p bootp
     ##   <chr>                    <dbl> <dbl>
-    ## 1 bootstrap.att            0.118 0.136
-    ## 2 bootstrap.drug           0.103 0.135
-    ## 3 bootstrap.unitc          0.154 0.207
-    ## 4 bootstrap.att_drug       0.183 0.200
-    ## 5 bootstrap.att_unitc      0.308 0.381
-    ## 6 bootstrap.drug_unitc     0.155 0.190
-    ## 7 bootstrap.att_drug_unitc 0.878 0.887
+    ## 1 bootstrap.att            0.118 0.137
+    ## 2 bootstrap.drug           0.103 0.109
+    ## 3 bootstrap.unitc          0.154 0.196
+    ## 4 bootstrap.att_drug       0.183 0.188
+    ## 5 bootstrap.att_unitc      0.308 0.336
+    ## 6 bootstrap.drug_unitc     0.155 0.181
+    ## 7 bootstrap.att_drug_unitc 0.878 0.885
 
 ### Kenward-roger approximation
 
@@ -412,23 +435,42 @@ colnames(BF) <- c("Model1","Model2","BF")
 
 print('R2 values for each model fit:')
 print(r2_model)
-print(BF)
+# print(BF, nrows = 100)
+
+knitr::kable(BF)
 ```
 
     ## [1] "R2 values for each model fit:"
     ## [1] 0.4015809 0.4329399 0.4598252 0.4610174 0.4771532 0.4906155 0.5163542
     ## [8] 0.5178823
-    ## # A tibble: 28 x 3
-    ##    Model1 Model2      BF
-    ##     <dbl>  <dbl>   <dbl>
-    ##  1      1      2 0.528  
-    ##  2      1      3 0.294  
-    ##  3      1      4 0.0573 
-    ##  4      1      5 0.0253 
-    ##  5      1      6 0.0107 
-    ##  6      1      7 0.00899
-    ##  7      1      8 0.00245
-    ##  8      2      3 0.557  
-    ##  9      2      4 0.109  
-    ## 10      2      5 0.0478 
-    ## # ... with 18 more rows
+
+| Model1 | Model2 |        BF |
+|-------:|-------:|----------:|
+|      1 |      2 | 0.5282424 |
+|      1 |      3 | 0.2944208 |
+|      1 |      4 | 0.0573311 |
+|      1 |      5 | 0.0252591 |
+|      1 |      6 | 0.0107478 |
+|      1 |      7 | 0.0089852 |
+|      1 |      8 | 0.0024500 |
+|      2 |      3 | 0.5573592 |
+|      2 |      4 | 0.1085317 |
+|      2 |      5 | 0.0478172 |
+|      2 |      6 | 0.0203463 |
+|      2 |      7 | 0.0170097 |
+|      2 |      8 | 0.0046380 |
+|      3 |      4 | 0.1947249 |
+|      3 |      5 | 0.0857924 |
+|      3 |      6 | 0.0365049 |
+|      3 |      7 | 0.0305183 |
+|      3 |      8 | 0.0083213 |
+|      4 |      5 | 0.4405823 |
+|      4 |      6 | 0.1874691 |
+|      4 |      7 | 0.1567254 |
+|      4 |      8 | 0.0427338 |
+|      5 |      6 | 0.4255029 |
+|      5 |      7 | 0.3557232 |
+|      5 |      8 | 0.0969939 |
+|      6 |      7 | 0.8360066 |
+|      6 |      8 | 0.2279511 |
+|      7 |      8 | 0.2726666 |

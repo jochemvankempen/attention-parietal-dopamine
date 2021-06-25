@@ -110,7 +110,27 @@ populationdata$unit <- factor(populationdata$unit, ordered=FALSE)
 populationdata$attention <- C(populationdata$attention, "contr.sum")
 populationdata$drug_on <- C(populationdata$drug_on, "contr.sum")
 populationdata$unit_class <- C(populationdata$unit_class, "contr.sum")
+print(populationdata)
 ```
+
+    ## # A tibble: 124 x 27
+    ##    unit  drug_on  attention  rate    FF   roc     MI     gain gain_log Subject
+    ##    <fct> <fct>    <fct>     <dbl> <dbl> <dbl>  <dbl>    <dbl>    <dbl> <chr>  
+    ##  1 2     Drug off Attend RF  8.85  1.43 0.703 0.180  NaN        NaN    W      
+    ##  2 5     Drug off Attend RF 29.0   5.24 0.612 0.0881   0.190     -1.66 W      
+    ##  3 6     Drug off Attend RF 44.3   7.48 0.731 0.191    0.139     -1.98 W      
+    ##  4 7     Drug off Attend RF 24.2   2.60 0.734 0.164    0.0653    -2.73 W      
+    ##  5 10    Drug off Attend RF 67     4.37 0.697 0.0858   0.0466    -3.07 W      
+    ##  6 11    Drug off Attend RF 11.0   3.43 0.701 0.219    0.247     -1.40 W      
+    ##  7 12    Drug off Attend RF  9.4   2.63 0.668 0.167    0.121     -2.11 W      
+    ##  8 13    Drug off Attend RF  9.79  1.75 0.722 0.194    0.0717    -2.63 W      
+    ##  9 18    Drug off Attend RF 59.7   7.68 0.863 0.313    0.107     -2.23 W      
+    ## 10 22    Drug off Attend RF 52.7   4.13 0.784 0.152    0.0600    -2.81 W      
+    ## # ... with 114 more rows, and 17 more variables: Task <chr>, Date <date>,
+    ## #   Drug <fct>, EjectCurrent <dbl>, Weight <dbl>, peak_to_trough_time <dbl>,
+    ## #   unit_class <fct>, EjectCurrent_centered <dbl>, s_stim <dbl>, s_att <dbl>,
+    ## #   s_dru <dbl>, s_dir <dbl>, s_att*dru <dbl>, s_att*dir <dbl>,
+    ## #   s_dru*dir <dbl>, s_att*dru*dir <dbl>, attention_drug_on <chr>
 
 ## mixed-level model
 
@@ -243,28 +263,31 @@ Use robust regression (bootstrap) to obtain confidence intervals
 
 ``` r
 # run bootstrap to produce 95% confidence intervals
-confint(model.att_drug_unitc, level = 0.95,
-        method = "boot",
-        nsim = 5000,
-        boot.type = c("perc","basic","norm"),
-        FUN = NULL, quiet = FALSE,
-        oldNames = TRUE,
-        cl = clus)
+knitr::kable(confint(model.att_drug_unitc, level = 0.95,
+                     method = "boot",
+                     nsim = 5000,
+                     boot.type = c("perc","basic","norm"),
+                     FUN = NULL, quiet = FALSE,
+                     oldNames = TRUE,
+                     cl = clus
+                     )
+             )
 ```
 
     ## Computing bootstrap confidence intervals ...
 
-    ##                                       2.5 %      97.5 %
-    ## .sig01                           0.53501521  0.95836554
-    ## .sigma                           0.36309086  0.49040172
-    ## (Intercept)                     -2.07648596 -1.50743927
-    ## attention1                      -0.17894708 -0.01890933
-    ## drug_on1                         0.11871795  0.28424239
-    ## unit_class1                     -0.16374602  0.40347933
-    ## attention1:drug_on1             -0.04607571  0.11271024
-    ## attention1:unit_class1          -0.14846989  0.01266382
-    ## drug_on1:unit_class1            -0.04852904  0.11559172
-    ## attention1:drug_on1:unit_class1 -0.01601642  0.14744494
+|                                   |      2.5 % |     97.5 % |
+|:----------------------------------|-----------:|-----------:|
+| .sig01                            |  0.5327805 |  0.9461775 |
+| .sigma                            |  0.3607858 |  0.4929637 |
+| (Intercept)                       | -2.0784848 | -1.5157195 |
+| attention1                        | -0.1791455 | -0.0199693 |
+| drug\_on1                         |  0.1204739 |  0.2819162 |
+| unit\_class1                      | -0.1566429 |  0.4081842 |
+| attention1:drug\_on1              | -0.0486677 |  0.1135839 |
+| attention1:unit\_class1           | -0.1525732 |  0.0116249 |
+| drug\_on1:unit\_class1            | -0.0473908 |  0.1183388 |
+| attention1:drug\_on1:unit\_class1 | -0.0186709 |  0.1432793 |
 
 ### parametric bootstrap model fits
 
@@ -318,13 +341,13 @@ tibble(
     ## # A tibble: 7 x 3
     ##   id                               p    bootp
     ##   <chr>                        <dbl>    <dbl>
-    ## 1 bootstrap.att            0.0444    0.0480  
+    ## 1 bootstrap.att            0.0444    0.0450  
     ## 2 bootstrap.drug           0.0000531 0.000999
-    ## 3 bootstrap.unitc          0.407     0.425   
-    ## 4 bootstrap.att_drug       0.527     0.560   
-    ## 5 bootstrap.att_unitc      0.255     0.260   
-    ## 6 bootstrap.drug_unitc     0.156     0.157   
-    ## 7 bootstrap.att_drug_unitc 0.123     0.136
+    ## 3 bootstrap.unitc          0.407     0.459   
+    ## 4 bootstrap.att_drug       0.527     0.554   
+    ## 5 bootstrap.att_unitc      0.255     0.283   
+    ## 6 bootstrap.drug_unitc     0.156     0.165   
+    ## 7 bootstrap.att_drug_unitc 0.123     0.142
 
 ### Kenward-roger approximation
 
@@ -409,23 +432,42 @@ colnames(BF) <- c("Model1","Model2","BF")
 
 print('R2 values for each model fit:')
 print(r2_model)
-print(BF)
+# print(BF, nrows = 100)
+
+knitr::kable(BF)
 ```
 
     ## [1] "R2 values for each model fit:"
     ## [1] 0.6867357 0.6982624 0.7536247 0.7533758 0.7545345 0.7620838 0.7635230
     ## [8] 0.7710614
-    ## # A tibble: 28 x 3
-    ##    Model1 Model2        BF
-    ##     <dbl>  <dbl>     <dbl>
-    ##  1      1      2     0.604
-    ##  2      1      3  8364.   
-    ##  3      1      4   671.   
-    ##  4      1      5    85.4  
-    ##  5      1      6    55.8  
-    ##  6      1      7     9.05 
-    ##  7      1      8     7.05 
-    ##  8      2      3 13850.   
-    ##  9      2      4  1111.   
-    ## 10      2      5   141.   
-    ## # ... with 18 more rows
+
+| Model1 | Model2 |           BF |
+|-------:|-------:|-------------:|
+|      1 |      2 | 6.039230e-01 |
+|      1 |      3 | 8.364080e+03 |
+|      1 |      4 | 6.708946e+02 |
+|      1 |      5 | 8.535756e+01 |
+|      1 |      6 | 5.581543e+01 |
+|      1 |      7 | 9.047095e+00 |
+|      1 |      8 | 7.053931e+00 |
+|      2 |      3 | 1.384958e+04 |
+|      2 |      4 | 1.110894e+03 |
+|      2 |      5 | 1.413385e+02 |
+|      2 |      6 | 9.242144e+01 |
+|      2 |      7 | 1.498054e+01 |
+|      2 |      8 | 1.168018e+01 |
+|      3 |      4 | 8.021140e-02 |
+|      3 |      5 | 1.020530e-02 |
+|      3 |      6 | 6.673200e-03 |
+|      3 |      7 | 1.081700e-03 |
+|      3 |      8 | 8.434000e-04 |
+|      4 |      5 | 1.272295e-01 |
+|      4 |      6 | 8.319550e-02 |
+|      4 |      7 | 1.348510e-02 |
+|      4 |      8 | 1.051420e-02 |
+|      5 |      6 | 6.539014e-01 |
+|      5 |      7 | 1.059905e-01 |
+|      5 |      8 | 8.263980e-02 |
+|      6 |      7 | 1.620895e-01 |
+|      6 |      8 | 1.263796e-01 |
+|      7 |      8 | 7.796902e-01 |
