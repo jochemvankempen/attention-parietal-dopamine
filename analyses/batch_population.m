@@ -5,16 +5,17 @@
 %% Clear workspace and add repositories to path
 
 clear all
-addpath(genpath('./repositories/attention-parietal-dopamine'))
-addpath(genpath('./repositories/plotj'))
-addpath(genpath('./repositories/gain-variability'))
-addpath(genpath('./repositories/bayesFactor'))
+
+path_repo = fileparts(mfilename('fullpath'));
+addpath(genpath(fullfile(path_repo,'/../../attention-parietal-dopamine')))
+addpath(genpath(fullfile(path_repo,'/../../plotj')))
+addpath(genpath(fullfile(path_repo,'/../../gain-variability')))
+
 %% Directories
 % Set data directories
 
 subjects = {'W','J'};
-% path_data = ['C:\Jochem\Gratc_PPC_DA_new\data\processed'];
-path_data = ['/Users/jochemvankempen/NCL/gratc_DA/processed'];
+path_data = ['M:\Jochem\papers\2021-DA-LIP\data\processed'];
 path_population = regexprep(path_data,'processed','population');
 
 if ~isfolder(path_population)
@@ -127,6 +128,7 @@ t_PSTH(:,:,2,:) = mean(rate_PSTH.samples(:,:,idx_attention_cond==0,:),3);
 
 t_gain = arrayfun(@(x)(x.rhat),rate_ROC.gv,'UniformOutput',true);
 t_gain_log = log(t_gain);
+t_gv = rate_ROC.gv;
 
 % use idx_attention_roc for ROC and MI, not that this is different from the
 % other attention index.
@@ -164,6 +166,7 @@ t_roc_attend    = reshape(t_roc_attend, [t_numel, 1]);
 t_mi_attend     = reshape(t_mi_attend, [t_numel, 1]);
 t_gain          = reshape(t_gain, [t_numel, 1]);
 t_gain_log      = reshape(t_gain_log, [t_numel, 1]);
+t_gv            = reshape(t_gv, [t_numel, 1]);
 
 t_PSTH          = reshape(t_PSTH, [t_numel, length(rate_PSTH.time)]);
 
@@ -172,9 +175,9 @@ att_table = table(...
     t_unit, ...
     t_drug_on_label, t_att_label, ...
     t_rate, t_FF, ... % rate, FF
-    t_roc_attend, t_mi_attend, t_gain, t_gain_log, ... % roc, MI, gain, gain_log
+    t_roc_attend, t_mi_attend, t_gain, t_gain_log, t_gv, ... % roc, MI, gain, gain_log, GainVariability
     t_PSTH, ... % PSTH
-    'VariableNames', {'unit', 'drug_on', 'attention', 'rate', 'FF', 'roc', 'MI', 'gain', 'gain_log', 'PSTH'});
+    'VariableNames', {'unit', 'drug_on', 'attention', 'rate', 'FF', 'roc', 'MI', 'gain', 'gain_log', 'gv', 'PSTH'});
 
 % join tables 
 att_table = join(att_table, unitlist, 'Keys', 'unit');
@@ -705,7 +708,7 @@ for idrug = 1:num_drug
     
     tmp_table = att_table(idx_unit,:);
     
-    for idp = 2:length(data2plot)
+    for idp = 1:length(data2plot)
         
         fprintf('\nDRUG: %s, DATATYPE: %s, UNIT SELECTION: %s, n=%d \n', label_drug{idrug}, data2plot{idp}, selectivity_criterium, length(unique(att_table.unit(idx_unit))))
 
@@ -713,72 +716,27 @@ for idrug = 1:num_drug
         mod_population.lme = fitlme(tmp_table,[data2plot{idp} ' ~ attention*drug_on*unit_class + (1|unit)'],'DummyVarCoding','effects'); % fit interaction model with effect coding
         mod_population.anova = anova(mod_population.lme);
 
-        % hierarchical model fits
-        mod.m1_intercept.lme = fitlme(tmp_table,[data2plot{idp} ' ~ 1 + (1|unit)'],'DummyVarCoding','effects');
-        mod.m2_att.lme = fitlme(tmp_table,[data2plot{idp} ' ~ attention + (1|unit)'],'DummyVarCoding','effects');
-        mod.m3_drug.lme = fitlme(tmp_table,[data2plot{idp} ' ~ attention + drug_on + (1|unit)'],'DummyVarCoding','effects');
-        mod.m4_unitc.lme = fitlme(tmp_table,[data2plot{idp} ' ~ attention + drug_on + unit_class + (1|unit)'],'DummyVarCoding','effects');
-        mod.m5_att_drug.lme = fitlme(tmp_table,[data2plot{idp} ' ~ attention + drug_on + unit_class + attention*drug_on + (1|unit)'],'DummyVarCoding','effects');
-        mod.m6_att_unitc.lme = fitlme(tmp_table,[data2plot{idp} ' ~ attention + drug_on + unit_class + attention:drug_on + attention:unit_class + (1|unit)'],'DummyVarCoding','effects');
-        mod.m7_drug_unitc.lme = fitlme(tmp_table,[data2plot{idp} ' ~ attention + drug_on + unit_class + attention:drug_on + attention:unit_class + drug_on:unit_class + (1|unit)'],'DummyVarCoding','effects');
-        mod.m8_att_drug_unitc.lme = fitlme(tmp_table,[data2plot{idp} ' ~ attention + drug_on + unit_class + attention:drug_on + attention:unit_class + drug_on:unit_class + attention:drug_on:unit_class + (1|unit)'],'DummyVarCoding','effects');
-
-        % likelihood ratio tests of hierarchical model fits
-        mod.m2_att.compare = compare(mod.m1_intercept.lme, mod.m2_att.lme, 'CheckNesting', true);
-        mod.m3_drug.compare = compare(mod.m2_att.lme, mod.m3_drug.lme, 'CheckNesting', true);
-        mod.m4_unitc.compare = compare(mod.m3_drug.lme, mod.m4_unitc.lme, 'CheckNesting', true);
-        mod.m5_att_drug.compare = compare(mod.m4_unitc.lme, mod.m5_att_drug.lme, 'CheckNesting', true);
-        mod.m6_att_unitc.compare = compare(mod.m5_att_drug.lme, mod.m6_att_unitc.lme, 'CheckNesting', true);
-        mod.m7_drug_unitc.compare = compare(mod.m6_att_unitc.lme, mod.m7_drug_unitc.lme, 'CheckNesting', true);
-        mod.m8_att_drug_unitc.compare = compare(mod.m7_drug_unitc.lme, mod.m8_att_drug_unitc.lme, 'CheckNesting', true);
-        
-        % convert BIC to bayes factor: 
-        % BF = (exp((BIC(null_lm) - BIC(full_lm))/2)). 
-        % See [here](https://www.rpubs.com/lindeloev/bayes_factors) for
-        % more info on BIC vs. Bayes factor. Computing BF from BIC is not
-        % ideal, as the definition of the prior is far from ideal. 
-        mod.m2_att.BF = exp((mod.m1_intercept.lme.ModelCriterion.BIC - mod.m2_att.lme.ModelCriterion.BIC)/2);  
-        mod.m3_drug.BF = exp((mod.m2_att.lme.ModelCriterion.BIC - mod.m3_drug.lme.ModelCriterion.BIC)/2);  
-        mod.m4_unitc.BF = exp((mod.m3_drug.lme.ModelCriterion.BIC - mod.m4_unitc.lme.ModelCriterion.BIC)/2);  
-        mod.m5_att_drug.BF = exp((mod.m4_unitc.lme.ModelCriterion.BIC - mod.m5_att_drug.lme.ModelCriterion.BIC)/2);  
-        mod.m6_att_unitc.BF = exp((mod.m5_att_drug.lme.ModelCriterion.BIC - mod.m6_att_unitc.lme.ModelCriterion.BIC)/2);  
-        mod.m7_drug_unitc.BF = exp((mod.m6_att_unitc.lme.ModelCriterion.BIC - mod.m7_drug_unitc.lme.ModelCriterion.BIC)/2);  
-        mod.m8_att_drug_unitc.BF = exp((mod.m7_drug_unitc.lme.ModelCriterion.BIC - mod.m8_att_drug_unitc.lme.ModelCriterion.BIC)/2);  
-        
-        % get explained variance (R2)
-        r2_type = 'Ordinary';
-%         r2_type = 'Adjusted';
-        lme_r2 = [mod.m1_intercept.lme.Rsquared.(r2_type) ...
-            mod.m2_att.lme.Rsquared.(r2_type) ...
-            mod.m3_drug.lme.Rsquared.(r2_type) ...
-            mod.m4_unitc.lme.Rsquared.(r2_type) ...
-            mod.m5_att_drug.lme.Rsquared.(r2_type) ...
-            mod.m6_att_unitc.lme.Rsquared.(r2_type) ...
-            mod.m7_drug_unitc.lme.Rsquared.(r2_type) ...
-            mod.m8_att_drug_unitc.lme.Rsquared.(r2_type) ...
-            ];
-%         
-%         % bayes factor anova
-%         bf_full = bf.anova(tmp_table,[data2plot{idp} ' ~ attention*drug_on*unit_class + (1|unit)']);
-%         
-% %         bf_intercept = bf.anova(tmp_table,[data2plot{idp} ' ~ 1 + (1|unit)']);
-%         bf_att = bf.anova(tmp_table,[data2plot{idp} ' ~ attention + (1|unit)']);
-%         bf_drug = bf.anova(tmp_table,[data2plot{idp} ' ~ attention + drug_on + (1|unit)']);
-%         bf_unitc = bf.anova(tmp_table,[data2plot{idp} ' ~ attention + drug_on + unit_class + (1|unit)']);
-%         bf_att_drug = bf.anova(tmp_table,[data2plot{idp} ' ~ attention + drug_on + unit_class + att*drug + (1|unit)']);
-%         bf_att_unitc = bf.anova(tmp_table,[data2plot{idp} ' ~ attention + drug_on + unit_class + att:drug + att:unitc + (1|unit)']);
-%         bf_drug_unitc = bf.anova(tmp_table,[data2plot{idp} ' ~ attention + drug_on + unit_class + att:drug + att:unitc + drug_on:unitc + (1|unit)']);
-%         bf_att_drug_unitc = bf.anova(tmp_table,[data2plot{idp} ' ~ attention + drug_on + unit_class + att:drug + att:unitc + att:drug_on:unit_class + (1|unit)']);
-%         
-%         
-%         lme_population = fitlme(tmp_table,[data2plot{idp} ' ~ attention + drug_on + unit_class + (1|unit)'],'DummyVarCoding','effects'); % fit interaction model with effect coding
-        
-%         exp(−12(BIC1−BIC2))
-%         
-%         writetable(test,'test.csv')
+%         % hierarchical model fits
+%         mod.m1_intercept.lme = fitlme(tmp_table,[data2plot{idp} ' ~ 1 + (1|unit)'],'DummyVarCoding','effects');
+%         mod.m2_att.lme = fitlme(tmp_table,[data2plot{idp} ' ~ attention + (1|unit)'],'DummyVarCoding','effects');
+%         mod.m3_drug.lme = fitlme(tmp_table,[data2plot{idp} ' ~ attention + drug_on + (1|unit)'],'DummyVarCoding','effects');
+%         mod.m4_unitc.lme = fitlme(tmp_table,[data2plot{idp} ' ~ attention + drug_on + unit_class + (1|unit)'],'DummyVarCoding','effects');
+%         mod.m5_att_drug.lme = fitlme(tmp_table,[data2plot{idp} ' ~ attention + drug_on + unit_class + attention*drug_on + (1|unit)'],'DummyVarCoding','effects');
+%         mod.m6_att_unitc.lme = fitlme(tmp_table,[data2plot{idp} ' ~ attention + drug_on + unit_class + attention:drug_on + attention:unit_class + (1|unit)'],'DummyVarCoding','effects');
+%         mod.m7_drug_unitc.lme = fitlme(tmp_table,[data2plot{idp} ' ~ attention + drug_on + unit_class + attention:drug_on + attention:unit_class + drug_on:unit_class + (1|unit)'],'DummyVarCoding','effects');
+%         mod.m8_att_drug_unitc.lme = fitlme(tmp_table,[data2plot{idp} ' ~ attention + drug_on + unit_class + attention:drug_on + attention:unit_class + drug_on:unit_class + attention:drug_on:unit_class + (1|unit)'],'DummyVarCoding','effects');
+% 
+%         % likelihood ratio tests of hierarchical model fits
+%         mod.m2_att.compare = compare(mod.m1_intercept.lme, mod.m2_att.lme, 'CheckNesting', true);
+%         mod.m3_drug.compare = compare(mod.m2_att.lme, mod.m3_drug.lme, 'CheckNesting', true);
+%         mod.m4_unitc.compare = compare(mod.m3_drug.lme, mod.m4_unitc.lme, 'CheckNesting', true);
+%         mod.m5_att_drug.compare = compare(mod.m4_unitc.lme, mod.m5_att_drug.lme, 'CheckNesting', true);
+%         mod.m6_att_unitc.compare = compare(mod.m5_att_drug.lme, mod.m6_att_unitc.lme, 'CheckNesting', true);
+%         mod.m7_drug_unitc.compare = compare(mod.m6_att_unitc.lme, mod.m7_drug_unitc.lme, 'CheckNesting', true);
+%         mod.m8_att_drug_unitc.compare = compare(mod.m7_drug_unitc.lme, mod.m8_att_drug_unitc.lme, 'CheckNesting', true);
 %         
         % print stats for each group
-%         disp(grpstats(tmp_table,{'attention','drug_on','unit_class'},{'min','max','mean','median'},'DataVars',data2plot{idp}))
+        disp(grpstats(tmp_table,{'attention','drug_on','unit_class'},{'min','max','mean','median'},'DataVars',data2plot{idp}))
         
         % print coefficients
         disp(mod_population.lme)
@@ -950,8 +908,8 @@ for idp = 1:length(data2plot)
                 set(gca,'XTickLabelRotation',-25)
             end
             
-            [p_fdr, p_masked] = FDR(p_val, 0.05);
-            % [p_masked] = p_val<0.05;
+%             [p_fdr, p_masked] = FDR(p_val, 0.05);
+            [p_masked] = p_val<0.05;
             p_masked = [p_masked ; false];
             plotj_text_emphasise(h_text, 1, 'italic', p_masked);
             plotj_text_emphasise(h_text, 1, 'bold', p_masked);
@@ -1136,6 +1094,7 @@ plotj_saveFig(savefigname, {'png', 'svg'})
 
 %% Attend ROC, drug/no drug, narrow/broad. DrugMI-ejecCurrent
 
+% datatype for dose-response curve
 datatype = 'MI';
 % datatype = 'AUROC';
 % datatype = 'gain_log';
@@ -1190,7 +1149,7 @@ for idrug = 1:length(label_drug)
         tmp_data(:,1) = att_table.roc(idx & att_table.drug_on=='Drug off');
         tmp_data(:,2) = att_table.roc(idx & att_table.drug_on=='Drug on');
 
-        [bf10,p,CI,stats] = bf.ttest(tmp_data(:,1),tmp_data(:,2))
+%         [bf10,p,CI,stats] = bf.ttest(tmp_data(:,1),tmp_data(:,2))
         plotj_scatter(tmp_data, ...
             'markerStyle', markerstyle, 'MarkerSize', markersize, ...
             'markerFaceColor', colors(iunitc,:), 'markerFaceAlpha', 0.5, ...
@@ -1229,11 +1188,12 @@ for idrug = 1:length(label_drug)
         h_text(idrug,iunitc) = text(x_pos, y_pos, ...
             sprintf('%s, %s (n=%d)', p_string, label_unitclass{iunitc}, size(tmp_data,1)), ...
             'Color', colors(iunitc,:), 'FontSize', fSet.Fontsize_ax);
-        %% inset
-
+        
+        % inset
+        % -----
         idx = tmp_data(:,1)<0.5;
         tmp_data(idx,:) = 1-tmp_data(idx,:);
-        [bf10,p,CI,stats] = bf.ttest(tmp_data(:,1),tmp_data(:,2))
+%         [bf10,p,CI,stats] = bf.ttest(tmp_data(:,1),tmp_data(:,2))
         P_roc(idrug,iunitc) = compare_means(tmp_data(:,1),tmp_data(:,2), 1, 'rank');
 
         bar_data = diff(tmp_data,1,2);
@@ -1299,7 +1259,7 @@ plotj_text_emphasise(h_text, p_masked, 'italic');
 plotj_text_emphasise(h_text, p_masked, 'bold');
 
 
-%% drugMI/attAUROC against ejection current
+% drugMI/attAUROC against ejection current
 
 switch datatype
     case 'MI'
@@ -1369,14 +1329,14 @@ for idrug = 1:ncol
             'markerFaceColor', colors(iunitc,:), 'markerFaceAlpha', 0.5, ...
             'axislimit', [], ...
             'unityLine', 0);
-        text_legend{1} = [label_unitclass{iunitc} ' (n=' num2str(length(find(unit_class(idx_unit)==iunitc))) ')'];
+        text_legend{1} = [label_unitclass{iunitc} ' (n=' num2str(length(find(unitlist.unit_class(idx_unit)==iunitc))) ')'];
     else
         tmp_data = [unitlist.EjectCurrent(unit2plot)  data2plot(unit2plot)];
         hscat = plotj_scatter(tmp_data, ...
             'dataIndex', grp2idx(unitlist.unit_class(unit2plot)), ...
             'markerStyle', markerstyle, 'MarkerSize', markersize, ...
-            'markerFaceColor', flip(colors(1:2,:)), 'markerFaceAlpha', [0.5 0.5], ...
-            'markerEdgeColor', flip(colors(1:2,:)), 'markerEdgeAlpha', [0.5 0.5], ...
+            'markerFaceColor', (colors(1:2,:)), 'markerFaceAlpha', [0.5 0.5], ...
+            'markerEdgeColor', (colors(1:2,:)), 'markerEdgeAlpha', [0.5 0.5], ...
             'axislimit', [], ...
             'unityLine', 0);
         text_legend{1} = [label_unitclass{1} ' (n=' num2str(length(find(unitlist.unit_class(idx_unit)==label_unitclass(1)))) ')'];
@@ -1473,6 +1433,7 @@ end
 
 savefigname = fullfile(path_population, sprintf('attAuroc_DrugResponseCurve'));
 plotj_saveFig(savefigname, {'png', 'svg'})
+
 %% DrugMI-ejecCurrent across selectivity indices
 
 colors = get_colors('spikewidth');
@@ -1485,14 +1446,15 @@ selectivity_criteria = {'none', 'att', 'dru', 'att&dru'};
 label_criteria = {'No subselection', 'Attention-selective', 'Drug-selective', {'Attention & Drug', 'selective'}};
 
 ncol = length(selectivity_criteria);
-nrow = length(label_drug)+1;
+nrow = length(label_drug);
 iplot = 0;
 
-[fH, fSet] = plotj_initFig('width', 20, 'height', 16, 'Journal',plot_conventions);
+[fH, fSet] = plotj_initFig('width', 20, 'height', 10, 'Journal',plot_conventions);
 fSet.subplotGap = fSet.subplotGap.*[1 .75];
 
-idx_subplot = [1:ncol ; (ncol+1):ncol*2; (ncol*2+1):ncol*3];
-%% drugMI/attAUROC against ejection current
+idx_subplot = [1:ncol ; (ncol+1):ncol*2];
+
+% drugMI/attAUROC against ejection current
 
 switch datatype
     case 'MI'
@@ -1522,9 +1484,7 @@ switch datatype
         ylim2use = [-0.25 0.3];
 end
 
-
 [P,h_text] = deal(zeros(length(selectivity_criteria), length(label_drug)));
-[P_population,h_text_population] = deal(zeros(length(selectivity_criteria),1));
 for icrit = 1:length(selectivity_criteria)
     
     selectivity_criterium = selectivity_criteria{icrit};
@@ -1573,8 +1533,8 @@ for icrit = 1:length(selectivity_criteria)
             hscat = plotj_scatter(tmp_data, ...
                 'dataIndex', grp2idx(unitlist.unit_class(unit2plot)), ...
                 'markerStyle', {'o','o'}, 'MarkerSize', markersize, ...
-                'markerFaceColor', flip(colors(1:2,:)), 'markerFaceAlpha', [0.5 0.5], ...
-                'markerEdgeColor', flip(colors(1:2,:)), 'markerEdgeAlpha', [0.5 0.5], ...
+                'markerFaceColor', (colors(1:2,:)), 'markerFaceAlpha', [0.5 0.5], ...
+                'markerEdgeColor', (colors(1:2,:)), 'markerEdgeAlpha', [0.5 0.5], ...
                 'axislimit', [], ...
                 'unityLine', 0);
             text_legend{1} = [label_unitclass{1} ' (n=' num2str(length(find(unitlist.unit_class(idx_unit)==label_unitclass(1)))) ')'];
@@ -1674,254 +1634,23 @@ for icrit = 1:length(selectivity_criteria)
         h_text(icrit,idrug) = text(x_pos, y_pos, {betaString, pstring_chi}, 'fontsize', fSet.Fontsize_text, 'color', [0.3 0.3 0.3]);
         
     end
-%% 'double' fit of lme
-
-    idx_unit = get_unit_selectivity(unitlist, selectivity_criterium);
-    
-    % use mean centered ejection current to decorrelate it from the linear
-    % term. Scale to make it more stable. 
-    ejection_current = unitlist.EjectCurrent_centered / norm(unitlist.EjectCurrent_centered); % scale
-    data_table = table(ejection_current(idx_unit), data2plot(idx_unit), unitlist.Drug(idx_unit), 'VariableNames', {'x', 'y', 'drug'});
-    
-    switch datatype
-        case 'MI'
-            filename = fullfile(path_population, sprintf('doseResponse_drugMI_%s.csv', selectivity_criteria{icrit}));
-        case 'AUROC'
-            filename = fullfile(path_population, sprintf('doseResponse_attAUROC_%s.csv', selectivity_criteria{icrit}));
-    end
-    writetable(data_table, filename);
-    
-%     idxdrug = find(strcmpi(label_drug, 'SCH23390'));
-    idx_SCH23390 = data_table.drug=='SCH23390';
-    
-    data_table.polyx1 = data_table.x;
-    data_table.polyx2 = data_table.x.^2;
-    
-    data_table.mixed_poly = data_table.polyx1;
-    data_table.mixed_poly(~idx_SCH23390) = data_table.polyx2(~idx_SCH23390);    
-
-    try
-        % test interaction between drug idx and linear ejection current
-        fprintf('\nInteraction model: linear \n')
-        lme1 = fitlme(data_table,['y ~ 1 + (1|drug)']);% fit constant
-        lme2 = fitlme(data_table,['y ~ 1 + polyx1 + (1|drug)']); % fit linear model
-        lme3 = fitlme(data_table,['y ~ 1 + polyx1 + polyx1*drug + (1|drug)']); % fit interaction model
-        lme_li = lme3;
-        
-        comp1 = compare(lme1, lme2, 'CheckNesting',true); % compare constant to linear
-        comp2 = compare(lme2, lme3, 'CheckNesting',true); % compare linear to interaction
-        
-        fprintf('\t Linear: Chi(%d) %1.2f, p = %1.3f\n', 1, comp1.LRStat(2), comp1.pValue(2))
-        fprintf('\t Interaction: Chi(%d) %1.2f, p = %1.3f\n', 1, comp2.LRStat(2), comp2.pValue(2))
-        
-        
-        % test random slopes model between drug idx and linear ejection current
-        fprintf('\nRandom slopes model: linear \n')
-        lme1 = fitlme(data_table,['y ~ 1 + (1|drug)']);% fit constant
-        lme2 = fitlme(data_table,['y ~ 1 + polyx1 + (1|drug)']); % fit linear model
-        lme3 = fitlme(data_table,['y ~ 1 + polyx1 + (polyx1|drug)']); % fit random slopes model
-        
-        comp1 = compare(lme1, lme2, 'CheckNesting',true); % compare constant to linear
-        comp2 = compare(lme2, lme3, 'CheckNesting',true); % compare linear to random slopes
-        
-        fprintf('\t Linear: Chi(%d) %1.2f, p = %1.3f\n', 1, comp1.LRStat(2), comp1.pValue(2))
-        fprintf('\t Interaction: Chi(%d) %1.2f, p = %1.3f\n', 1, comp2.LRStat(2), comp2.pValue(2))
-        
-        
-        % test interaction between drug idx and quadratic ejection current
-        fprintf('\nInteraction model: quadratic \n')
-        lme1 = fitlme(data_table,['y ~ 1 + (1|drug)']);% fit constant
-        lme2 = fitlme(data_table,['y ~ 1 + polyx1 + (1|drug)']); % fit linear model
-        lme3 = fitlme(data_table,['y ~ 1 + polyx1 + polyx2 + (1|drug)']); % fit quadratic model (this includes the linear model)
-        lme4 = fitlme(data_table,['y ~ 1 + polyx1 + polyx2 + polyx2*drug + (1|drug)']); % fit interaction model
-        lme_qi = lme4;
-        
-        comp1 = compare(lme1, lme2, 'CheckNesting',true); % compare constant to linear
-        comp2 = compare(lme2, lme3, 'CheckNesting',true); % compare linear to quadratic
-        comp3 = compare(lme3, lme4, 'CheckNesting',true); % compare quadratic to interaction
-        
-        fprintf('\t Linear: Chi(%d) %1.2f, p = %1.3f\n', 1, comp1.LRStat(2), comp1.pValue(2))
-        fprintf('\t Quadratic: Chi(%d) %1.2f, p = %1.3f\n', 1, comp2.LRStat(2), comp2.pValue(2))
-        fprintf('\t Interaction: Chi(%d) %1.2f, p = %1.3f\n', 1, comp3.LRStat(2), comp3.pValue(2))
-    catch
-        lme_li = fitlme(data_table,['y ~ 1 + polyx1 + polyx1*drug + (1|drug)']); % fit linear interaction model
-        lme_qi = fitlme(data_table,['y ~ 1 + polyx1 + polyx2 + polyx2*drug + (1|drug)']); % fit quadratic interaction model
-        warning('Could not fit all the different model types. Likely because later models had lower LL compared to earlier models')
-    end
-    
-    % test mixed polynomial model
-    fprintf('\nMixed-polynomial model \n')
-    lme1 = fitlme(data_table,['y ~ 1 + (1|drug)']);% fit constant
-    lme2 = fitlme(data_table,['y ~ 1 + polyx1 + (1|drug)']); % fit linear model
-    lme3 = fitlme(data_table,['y ~ 1 + polyx1 + polyx2 + (1|drug)']); % fit quadratic model (this includes the linear model)  
-    lme4 = fitlme(data_table,['y ~ 1 + polyx1 + polyx2 + mixed_poly + (1|drug)']); % fit mixed linear/quadratic coefficients
-    
-    % compare the model fits
-    comp1 = compare(lme1, lme2, 'CheckNesting',true); % compare constant to linear 
-    comp2 = compare(lme2, lme3, 'CheckNesting',true); % compare linear to quadratic
-    comp3 = compare(lme3, lme4, 'CheckNesting',true); % compare quadratic to mixed
-    
-    P_population(icrit) = comp3.pValue(2);
-        
-    % print results
-    fprintf('\t Linear: Chi(%d) %1.2f, p = %1.3f\n', 1, comp1.LRStat(2), comp1.pValue(2))
-    fprintf('\t Quadratic: Chi(%d) %1.2f, p = %1.3f\n', 1, comp2.LRStat(2), comp2.pValue(2))
-    fprintf('\t Mixed: Chi(%d) %1.2f, p = %1.3f\n', 1, comp3.LRStat(2), comp3.pValue(2))
-
-    
-    % compare mixed model to linear and quadratic interaction models
-    fprintf('\nlinear interaction - quadratic interaction \n')
-    comp_li_mixed = compare(lme_li, lme_qi)    
-    fprintf('\nMixed-polynomial model - linear interaction \n')
-    comp_li_mixed = compare(lme4, lme_li)
-    fprintf('\nMixed-polynomial model - quadratic interaction \n')
-    comp_qi_mixed = compare(lme4, lme_qi)
-
-    
-    % plot text
-    iplot=iplot+1;    
-    subtightplot(nrow, ncol, idx_subplot(iplot), fSet.subplotGap, fSet.subplotMargin, fSet.subplotMargin);
-    plotj_initAx(fSet);
-    hold on
-    axis off
-    [pstring_chi] = get_significance_strings(comp3.pValue(2), 'rounded', 0);
-    [pstring_coef1] = get_significance_strings(lme4.Coefficients.pValue(2), 'rounded', 0);
-    [pstring_coef2] = get_significance_strings(lme4.Coefficients.pValue(3), 'rounded', 0);
-    [pstring_coef3] = get_significance_strings(lme4.Coefficients.pValue(4), 'rounded', 0);
-
-    
-    
-    text2plot = { ...
-        sprintf('%s(1) = %1.2f, %s', '\chi', comp3.LRStat(2), pstring_chi), ... # final model fit
-        '', ...
-        sprintf('%s_{1} = %1.2e, %s', '\beta', lme4.Coefficients.Estimate(2), pstring_coef1), ... # first coefficient
-        sprintf('%s_{2} = %1.2e, %s', '\beta', lme4.Coefficients.Estimate(3), pstring_coef2), ... # first coefficient
-        sprintf('%s_{3} = %1.2e, %s', '\beta', lme4.Coefficients.Estimate(4), pstring_coef3), ... # first coefficient
-        };
-    %
-
-    h_text_population(icrit,1) = text(0,0,text2plot,'Interpreter','tex');
-    ylim([-0.5 0.5])
-    
-    if icrit==1
-        text(-0.2, 0, ['"Population Model"'], 'Rotation', 90, 'HorizontalAlignment', 'center')
-    end
-
 end
 
 % multiple comparison correction, individual models
 [p_fdr, p_masked] = FDR(P, 0.05);
 plotj_text_emphasise(h_text, p_masked, 'italic', 2);
 plotj_text_emphasise(h_text, p_masked, 'bold', 2);
-
-% multiple comparison correction, population models
-[p_fdr, p_masked] = FDR(P_population, 0.05);
-plotj_text_emphasise(h_text_population, p_masked, 'italic', 1);
-plotj_text_emphasise(h_text_population, p_masked, 'bold', 1);
-
 
 % save
 savefigname = fullfile(path_population, sprintf('DrugResponseCurve_selection'));
 plotj_saveFig(savefigname, {'png', 'svg'})
-%% plot change in firing rate over the course of a block
-
-selectivity_criteria = {'none', 'att', 'dru', 'att&dru'};
-label_criteria = {'No subselection', 'Attention-selective', 'Drug-selective', {'Attention & Drug', 'selective'}};
-
-ncol = length(selectivity_criteria);
-nrow = length(label_drug);
-iplot = 0;
-
-[fH, fSet] = plotj_initFig('width', 25, 'height', 13, 'Journal',plot_conventions);
-fSet.subplotGap = fSet.subplotGap.*[1 .75];
-
-idx_subplot = [1:ncol ; (ncol+1):ncol*2];
-
-[P,h_text] = deal(zeros(length(selectivity_criteria), length(label_drug), 2)); % crit, drug, unit
-
-for icrit = 1:length(selectivity_criteria)
-    
-    selectivity_criterium = selectivity_criteria{icrit};
-    
-    data2plot = rate_summary.lm.coef(:,:,2);
-    
-    clear ax h
-    for idrug = 1:length(label_drug)
-        clear text_legend tmp_data
-        iplot=iplot+1;
-        
-        
-        ax(idrug) = subtightplot(nrow, ncol, idx_subplot(iplot), fSet.subplotGap, fSet.subplotMargin, fSet.subplotMargin);
-        if idrug==1
-            plotj_initAx(fSet);
-%             plotj_initAx(fSet, 'axlabel', icrit);
-        else
-            plotj_initAx(fSet);
-        end
-        hold on
-        
-        if idrug==1
-            % title([label_drug{idrug} label_drug_ext{idrug}], 'FontSize', fSet.Fontsize_title)
-            h_title = title(label_criteria{icrit}, 'FontSize', fSet.Fontsize_title);
-            set(h_title, 'Units', 'normalized');
-%             h_title.Position = h_title.Position+[0 0.2 0];
-        end
-        
-        idx_unit = get_unit_selectivity(unitlist, rate_ANOVA.selectivity, selectivity_criterium, {'drug',label_drug(idrug)});
-        
-        % plot per unit type
-        tmp_data{1} = data2plot(idx_unit & unit_class==1, 2);
-        tmp_data{2} = data2plot(idx_unit & unit_class==2, 2);
-        
-        plotj_hist(tmp_data, ...
-            'dataindex', unit_class(idx_unit), ...
-            'histStyle','bar');
-        
-        % stats
-        P(icrit,idrug,1) = compare_means(tmp_data{1},0, 1, 'rank');
-        P(icrit,idrug,2) = compare_means(tmp_data{2},0, 1, 'rank');
-        
-        [pstring1] = get_significance_strings(P(icrit,idrug,1), 'rounded', 0);
-        [pstring2] = get_significance_strings(P(icrit,idrug,2), 'rounded', 0);
-        
-        set(gca, 'Units', 'normalized');
-        
-        tmp_x = get(gca,'xlim');
-        tmp_y = get(gca,'ylim');
-        
-        x_pos = get_value_range(tmp_x, 0.5);
-        y_pos(1) = get_value_range(tmp_y, 0.8);
-        y_pos(2) = get_value_range(tmp_y, 0.9);
-
-        h_text(icrit,idrug,1) = text(x_pos, y_pos(1), ...
-            sprintf('%s, %s (n=%d)', pstring1, label_unitclass{1}, length(find(idx_unit & unit_class==1))), ...
-            'Color', colors(1,:), 'FontSize', fSet.Fontsize_text);
-        h_text(icrit,idrug,1) = text(x_pos, y_pos(2), ...
-            sprintf('%s, %s (n=%d)', pstring2, label_unitclass{2}, length(find(idx_unit & unit_class==2))), ...
-            'Color', colors(2,:), 'FontSize', fSet.Fontsize_text);
-        
-        plot([0 0], ylim, 'k', 'linew', 1)
-        
-        xlabel('beta values')
-        ylabel('count')
-    end
-    
-
-end
-
-% multiple comparison correction, individual models
-[p_fdr, p_masked] = FDR(P, 0.05);
-plotj_text_emphasise(h_text, p_masked, 'italic', 2);
-plotj_text_emphasise(h_text, p_masked, 'bold', 2);
-
-% save
-savefigname = fullfile(path_population, sprintf('block_drug_response'));
-plotj_saveFig(savefigname, {'png', 'svg'})
-
 
 %% plot gain, mean to variance relationship, separate for unit-types
 
 [colors, labels] = get_colors('att_drug');
+[colors_violin, labels_violin, labels_violin_short] = get_colors('att_drug');
+colors_violin = reshape(colors_violin, [4,3]);
+labels_violin = reshape(labels_violin, [4,1]);
 
 ncol = length(label_drug);
 nrow = 2; % unit types
@@ -1940,8 +1669,8 @@ for idrug = 1:length(label_drug)
         iplot = iplot+1;
         
         % unit selection
-        idx_unit = get_unit_selectivity(unitlist, selectivity_criterium, {'drug',label_drug(idrug)});
-        idx_unit = idx_unit & unitlist.unit_class==label_unitclass(iunitc);
+        idx_unit = get_unit_selectivity(att_table, selectivity_criterium, {'drug',label_drug(idrug)});
+        idx_unit = idx_unit & att_table.unit_class==label_unitclass(iunitc);
         
         % subplot axis
         h_ax = subtightplot(nrow, ncol, iplot, fSet.subplotGap, fSet.subplotMargin, fSet.subplotMargin);
@@ -1955,35 +1684,36 @@ for idrug = 1:length(label_drug)
         if idrug==1
             h_title = title([label_unitclass{iunitc} '-spiking'], 'FontSize', fSet.Fontsize_title);
         end
-        gv = rate_ROC.gv(idx_unit,:,:);
         
-        for iatt = 1:2
-            for idrug_in = 1:2
-                mus = [gv(:,idrug_in,iatt).mus];
-                s2s = [gv(:,idrug_in,iatt).s2s];
-                
-                mus = mus(:);
-                s2s = s2s(:);
-                
-                % get binomial fit
-                rhat = nanmean([gv(:,idrug_in,iatt).rhat]);
-                
-                gv_pop = GainVariability;
-                gv_pop.rhat = rhat;
-                m2v = gv_pop.pred_variance(xval_gain);
-                
-                % plot
-                %             h(iatt,idrug_in) = plot(mus,s2s,'.','Color',colors(iatt,idrug_in,:));
-                h(iatt,idrug_in) = scatter(mus,s2s,fSet.MarkerSize*3,squeeze(colors(iatt,idrug_in,:))','filled','MarkerFaceAlpha',0.5);
-                %             h(iatt,idrug_in) = scatter(mus,s2s,fSet.MarkerSize*2,squeeze(colors(iatt,idrug_in,:))','filled');
-                plot(m2v.mean,m2v.variance,'Color',colors(iatt,idrug_in,:),'linew',fSet.LineWidth);
-                xlim([0.8 max(xval_gain)])
-                ylim([0.8 max(xval_gain)])
-                plot([1e-10 max(s2s)*1.1],[1e-10 max(s2s)*1.1],'k','linew',1)
-                set(gca,'xscale','log','yscale','log')
-            end
+        gv = unstack(att_table(idx_unit,:), 'gv', {'attention_drug_on'}, 'GroupingVariables', {'unit','unit_class'}, 'VariableNamingRule', 'preserve');
+        variable_names = gv.Properties.VariableNames;
+        
+        for iatt_drug = 1:length(labels_violin)
+            
+            mus = [gv.(labels_violin{iatt_drug}).mus];
+            s2s = [gv.(labels_violin{iatt_drug}).s2s];
+            
+            mus = mus(:);
+            s2s = s2s(:);
+            
+            % get binomial fit
+            rhat = nanmean([gv.(labels_violin{iatt_drug}).rhat]);
+            
+            gv_pop = GainVariability;
+            gv_pop.rhat = rhat;
+            m2v = gv_pop.pred_variance(xval_gain);
+            
+            % plot
+            %             h(iatt,idrug_in) = plot(mus,s2s,'.','Color',colors(iatt,idrug_in,:));
+            h(iatt,idrug_in) = scatter(mus,s2s,fSet.MarkerSize*3,colors_violin(iatt_drug,:),'filled','MarkerFaceAlpha',0.5);
+            %             h(iatt,idrug_in) = scatter(mus,s2s,fSet.MarkerSize*2,squeeze(colors(iatt,idrug_in,:))','filled');
+            plot(m2v.mean,m2v.variance,'Color',colors_violin(iatt_drug,:),'linew',fSet.LineWidth);
+            xlim([0.8 max(xval_gain)])
+            ylim([0.8 max(xval_gain)])
+            plot([1e-10 max(s2s)*1.1],[1e-10 max(s2s)*1.1],'k','linew',1)
+            set(gca,'xscale','log','yscale','log')
         end
-%         axis square
+        %         axis square
         %     legend(h(:),labels(:),'Location','SouthEast','Fontsize',fSet.Fontsize_text)
         
         if idrug==length(label_drug)
@@ -2069,8 +1799,8 @@ for idrug = 1:length(label_drug)
         
         ylabel('log(\sigma^{2}_G )', 'FontSize', fSet.Fontsize_text)
         
-        [p_fdr, p_masked] = FDR(p_val, 0.05);
-%         [p_masked] = p_val<0.05;
+%         [p_fdr, p_masked] = FDR(p_val, 0.05);
+        [p_masked] = p_val<0.05;
         p_masked = [p_masked ; false];
         plotj_text_emphasise(h_text, 1, 'italic', p_masked);
         plotj_text_emphasise(h_text, 1, 'bold', p_masked);

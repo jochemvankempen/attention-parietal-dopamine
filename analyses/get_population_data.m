@@ -96,7 +96,7 @@ for irec = 1:height(recordinglist)
         
         case 'pupil_timeseries'
             
-            if irec==1
+            if ~exist('population','var')
                 population.pupil = [];
                 population.time = loaddata.timestamps;
             end
@@ -104,13 +104,13 @@ for irec = 1:height(recordinglist)
 
         case 'pupil_windows'
             
-            if irec==1
+            if ~exist('population','var')
                 population.pupil = [];
             end
             population.pupil = cat(1, population.pupil, loaddata.pupil_cond);
                     
         case 'RT_drug_modulation'
-            if irec==1
+            if ~exist('population','var')
                 population.RT = [];
             end
             population.RT = cat(1, population.RT, loaddata.RT);
@@ -118,7 +118,7 @@ for irec = 1:height(recordinglist)
         case 'spike_rate_PSTH'
             num_unit = size(loaddata.PSTH.(time_window).samples,1);
 
-            if irec==1
+            if ~exist('population','var')
                 population.maxhist = [];
                 population.samples = [];
                 population.time = loaddata.PSTH.(time_window).time;
@@ -130,7 +130,7 @@ for irec = 1:height(recordinglist)
         case 'spike_rate_summary'
             
             num_unit = size(loaddata.rate_cond,1);
-            if irec==1
+            if ~exist('population','var')
                 population.rate = [];
                 population.FF = [];
                 population.lm.coef = [];
@@ -149,7 +149,7 @@ for irec = 1:height(recordinglist)
         case 'spike_rate_ANOVA'
             
             num_unit = size(loaddata.p_anova,1);
-            if irec==1
+            if ~exist('population','var')
                 population.selectivity = [];
             end
 
@@ -161,7 +161,7 @@ for irec = 1:height(recordinglist)
             
             num_unit = size(loaddata.roc_attend,1);
 
-            if irec==1
+            if ~exist('population','var')
                 population.roc_attend = [];
                 population.roc_drug = [];
                 population.mi_attend = [];
@@ -182,7 +182,7 @@ for irec = 1:height(recordinglist)
             
             num_unit = size(loaddata.waveform.average_spike,1);
             
-            if irec==1
+            if ~exist('population','var')
                 population.waveform = [];
                 population.peak_to_trough_time = [];
                 
