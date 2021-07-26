@@ -1,8 +1,8 @@
 # attention-parietal-dopamine
 
-This repository contains the code to run the analyses and reproduce the results described in the paper ["Dopamine influences attentional rate modulation in Macaque posterior parietal cortex"](https://www.biorxiv.org/content/10.1101/2020.05.15.097675v1).
+This repository contains the code to run the analyses and reproduce the results described in the paper ["Dopamine influences attentional rate modulation in Macaque posterior parietal cortex"](https://www.biorxiv.org/content/10.1101/2020.05.15.097675v2).
 
-Preprocessed data are publicly available [here](https://gin.g-node.org/jochemvankempen/Thiele-attention-gratc-LIP-pipette).
+Preprocessed data will be made available [here](https://gin.g-node.org/jochemvankempen/Thiele-attention-gratc-LIP-pipette) upon acceptance of the manuscript.
 
 ## Analyses
 Code can be found in the folder [./analyses/](https://gitlab.com/JvK/attention-parietal-dopamine/-/tree/master/analyses). 
