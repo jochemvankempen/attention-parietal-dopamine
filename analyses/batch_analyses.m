@@ -28,8 +28,8 @@ recordinglist = get_recordinglist(subjects, path_data);
 
 Job.spike_rate_summary      = 0;
 Job.spike_rate_ANOVA        = 0;
-Job.spike_rate_ROC          = 0;
-Job.pupil_drug_modulation   = 1;
+Job.spike_rate_ROC          = 1;
+Job.pupil_drug_modulation   = 0;
 Job.RT_drug_modulation      = 0;
 
 %% Run jobs
