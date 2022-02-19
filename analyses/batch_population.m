@@ -15,17 +15,18 @@ addpath(genpath(fullfile(path_repo,'/../../gain-variability')))
 % Set data directories
 
 subjects = {'W','J'};
-path_data = ['M:\Jochem\papers\2021-DA-LIP\data\processed'];
-path_data = ['/Users/jochemvankempen/NCL/gratc_DA/processed'];
+% path_data = ['M:\Jochem\papers\2021-DA-LIP\data\processed'];
+% path_data = ['/Users/jochemvankempen/NCL/gratc_DA/processed'];
 
-path_population = regexprep(path_data,'processed','population');
+path_data = fullfile(path_repo,'/../../../data/processed');
+% path_population = regexprep(path_data,'processed','population');
 
 if ~isfolder(path_population)
     mkdir(path_population)
 end
 
 fprintf('Load data from: %s\n', path_data)
-fprintf('Store data to: %s\n', path_population)
+fprintf('Save data to: %s\n', path_population)
 
 %% Param
 % set some parameters that we'll use 

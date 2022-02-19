@@ -86,7 +86,7 @@ for irec = 1:height(recordinglist)
     loadfilename = fullfile(tmp_path, filename);
     
     if ~exist(loadfilename,'file')
-        warning('file does not exist: %s',loadfilename)
+        % warning('file does not exist: %s',loadfilename)
         continue
     end
     loaddata = load(loadfilename);
