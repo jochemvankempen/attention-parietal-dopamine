@@ -16,6 +16,8 @@ addpath(genpath(fullfile(path_repo,'/../../gain-variability')))
 
 subjects = {'W','J'};
 path_data = ['M:\Jochem\papers\2021-DA-LIP\data\processed'];
+path_data = ['/Users/jochemvankempen/NCL/gratc_DA/processed'];
+
 path_population = regexprep(path_data,'processed','population');
 
 if ~isfolder(path_population)
@@ -35,7 +37,7 @@ label_unitclass = {'Narrow','Broad'};
 
 markersize = 15; % scatterplot markersize
 
-plot_conventions = 'Science'; % follow figure conventions from this journal
+plot_conventions = 'Nature'; % follow figure conventions from this journal
 
 % condition indices
 idx_attention_cond = [1 0 0 1 0 0]; % cond_num mapping to attend RF/away in trialdata
@@ -320,7 +322,7 @@ fprintf('\t%d total units interaction attention by drug application  (%1.1f%%)\n
 colors = reshape(colors, [4,3]);
 labels = reshape(labels, [4,1]);
 
-linestyle = {'-','-','--','--'};
+linestyle = {'-','-','-','-'};
 
 events = {'stim', 'cue', 'dim'};
 label_event = {'Stimulus onset', 'Cue onset', 'First-dimming'};
@@ -332,7 +334,7 @@ nrow = length(label_drug);
 
 idx_subplot = {1,2,3,6,7,8,[4 5 9 10]};
 
-[fH, fSet] = plotj_initFig('width', 20, 'height', 11, 'Journal',plot_conventions);
+[fH, fSet] = plotj_initFig('width', 26, 'height', 11, 'Journal',plot_conventions);
 fSet.subplotGap2 = fSet.subplotGap .* [1.3 0.30];
 
 iplot = 0;
@@ -498,31 +500,26 @@ plotj_saveFig(savefigname, {'png', 'svg'})
 
 %% Violin, population plot
 
-data2plot = {'rate'};
-% data2plot = {'FF'};
-% data2plot = {'gain_log'};
-% data2plot = {'gain'};
-% data2plot = {'rate','FF'};
+data2plot = {'rate','FF','gain_log'};
 
 [colors_violin, labels_violin] = get_colors('att_drug');
 colors_violin = reshape(colors_violin, [4,3]);
 labels_violin = reshape(labels_violin, [4,1]);
 
 % plotting param
-ncol = 2 * length(data2plot); % drugs
-nrow = 1; 
+ncol = length(data2plot) + 1; % drugs
+nrow = 2; 
 iplot = 0;
-plotlabel_offset = 2;
+plotlabel_offset = 0;
+xval_gain = 1:500;
 
-[fH, fSet] = plotj_initFig('figNum', 2, 'width', 20, 'height', 6, 'Journal',plot_conventions);
+[fH, fSet] = plotj_initFig('figNum', 2, 'width', 26, 'height', 13, 'Journal',plot_conventions);
 fSet.subplotGap = [0.1, 0.06];
-
-
-for idp = 1:length(data2plot)
+fSet.subplotMargin = fSet.subplotMargin / 2;
+for idrug = 1:num_drug
     
-    
-    for idrug = 1:num_drug
-        
+    for idp = 1:length(data2plot)
+            
         % fit model
         fprintf('Testing model: %s \n', label_drug{idrug})
         
@@ -542,12 +539,63 @@ for idp = 1:length(data2plot)
         end
         hold on
         
-        h_title = title(label_drug{idrug}, 'FontSize', fSet.Fontsize_title);
-        
+        if idp==1
+            
+            ylabel(label_drug{idrug}, 'FontSize', fSet.Fontsize_title);
+        end
         % extract smaller table
         %         v_att_table = unstack(att_table(idx_unit,:), data2plot{idp}, {'attention_drug_on'}, 'GroupingVariables', {'unit','unit_class'}, 'VariableNamingRule', 'preserve');
         v_att_table = att_table(idx_unit, ismember(att_table.Properties.VariableNames, {data2plot{idp},'drug_on','attention','unit','attention_drug_on'}));
+        
+        switch data2plot{idp}
+            case {'gain_log', 'gain'}
                 
+                gv = unstack(att_table(idx_unit,:), 'gv', {'attention_drug_on'}, 'GroupingVariables', {'unit'}, 'VariableNamingRule', 'preserve');
+                variable_names = gv.Properties.VariableNames;
+                
+                for iatt_drug = 1:length(labels_violin)
+                    
+                    mus = [gv.(labels_violin{iatt_drug}).mus];
+                    s2s = [gv.(labels_violin{iatt_drug}).s2s];
+                    
+                    mus = mus(:);
+                    s2s = s2s(:);
+                    
+                    % get binomial fit
+                    rhat = nanmean([gv.(labels_violin{iatt_drug}).rhat]);
+                    
+                    gv_pop = GainVariability;
+                    gv_pop.rhat = rhat;
+                    m2v = gv_pop.pred_variance(xval_gain);
+                    
+                    % plot
+                    scatter(mus, s2s, fSet.MarkerSize, colors_violin(iatt_drug,:), 'filled', 'MarkerFaceAlpha', 0.5);
+
+                    plot(m2v.mean, m2v.variance,'Color', colors_violin(iatt_drug,:), 'linew', fSet.LineWidth);
+                    xlim([0.8 max(xval_gain)])
+                    ylim([0.8 max(xval_gain)])
+                    plot([1e-10 max(s2s)*1.1],[1e-10 max(s2s)*1.1],'k','linew',1)
+                    set(gca,'xscale','log','yscale','log')
+                end
+                %         axis square
+                %     legend(h(:),labels(:),'Location','SouthEast','Fontsize',fSet.Fontsize_text)
+                
+                if idrug==length(label_drug)
+                    xlabel('Mean (spikes)','FontSize',fSet.Fontsize_text)
+                end
+                ylabel('Variance (spikes^{2})','FontSize',fSet.Fontsize_text)
+                axis square
+                
+                iplot = iplot+1;
+                subtightplot(nrow, ncol, iplot, fSet.subplotGap, fSet.subplotMargin, fSet.subplotMargin)
+                if idrug==1
+                    axH = plotj_initAx(fSet, 'axlabel', iplot + plotlabel_offset, 'axlabelDisplacement', [0.05, 0.02]);
+                else
+                    axH = plotj_initAx(fSet);
+                end
+                hold on
+        end
+        
         % plot violin
         v = violinplot(v_att_table.(data2plot{idp}), v_att_table.attention_drug_on, 'ShowMean', true);
         XTickLabel = get(gca,'XTickLabel');
@@ -608,29 +656,216 @@ for idp = 1:length(data2plot)
         
         % plot text
         YLIM = get(gca,'ylim');
+        switch data2plot{idp}
+            case {'gain_log', 'gain'}
+                set(gca, 'ylim', YLIM .* [1 1.5])
+            otherwise
+                set(gca, 'ylim', YLIM .* [1 1.15])
+        end
+        tmp_x = get(gca,'xlim');
+        tmp_y = get(gca,'ylim');
+        
+        x_pos = get_value_range(tmp_x, 0.95);
+        y_pos = get_value_range(tmp_y, 0.95);
+        
+        h_text = text(x_pos, y_pos, p_string,'HorizontalAlignment','right');
+        
+        [p_masked] = p_val<0.05;
+        p_masked = [p_masked ; false];
+        plotj_text_emphasise(h_text, 1, 'italic', p_masked);
+        plotj_text_emphasise(h_text, 1, 'bold', p_masked);
+        
+        switch data2plot{idp}
+            case 'rate'
+                ylabel('Firing rate (Hz)', 'FontSize', fSet.Fontsize_text)
+            case 'FF'
+                ylabel('Fano Factor', 'FontSize', fSet.Fontsize_text)
+            case 'gain'
+                ylabel('\sigma_{G}^{2}', 'FontSize', fSet.Fontsize_text)
+            case 'gain_log'
+                ylabel('log(\sigma_{G}^{2})', 'FontSize', fSet.Fontsize_text)
+        end
+        
+        
+        if idrug == 2
+            set(gca,'XTickLabelRotation',25)
+        else
+            set(gca, 'XTickLabel', '')
+        end
+    end
+end
+
+savefigname = fullfile(path_population, sprintf('population_violin'));
+plotj_saveFig(savefigname, {'png', 'svg'})
+
+
+
+%% plot gain, mean to variance relationship, separate for unit-types
+
+[colors, labels] = get_colors('att_drug');
+[colors_violin, labels_violin, labels_violin_short] = get_colors('att_drug');
+colors_violin = reshape(colors_violin, [4,3]);
+labels_violin = reshape(labels_violin, [4,1]);
+
+ncol = length(label_drug);
+nrow = 2; % unit types
+
+[fH, fSet] = plotj_initFig('width',20,'height',15,'Journal',plot_conventions);
+
+clear legendText h
+gain_table_full = [];
+
+iplot=0;
+
+xval_gain = 1:500;
+
+for idrug = 1:length(label_drug)
+    for iunitc = 1:length(unique(unitlist.unit_class))
+        iplot = iplot+1;
+        
+        % unit selection
+        idx_unit = get_unit_selectivity(att_table, selectivity_criterium, {'drug',label_drug(idrug)});
+        idx_unit = idx_unit & att_table.unit_class==label_unitclass(iunitc);
+        
+        % subplot axis
+        h_ax = subtightplot(nrow, ncol, iplot, fSet.subplotGap, fSet.subplotMargin, fSet.subplotMargin);
+        if iunitc==1
+            plotj_initAx(fSet, 'axlabel', idrug);
+        else
+            plotj_initAx(fSet);
+        end
+        hold on
+        
+        if idrug==1
+            h_title = title([label_unitclass{iunitc} '-spiking'], 'FontSize', fSet.Fontsize_title);
+        end
+        
+        gv = unstack(att_table(idx_unit,:), 'gv', {'attention_drug_on'}, 'GroupingVariables', {'unit','unit_class'}, 'VariableNamingRule', 'preserve');
+        variable_names = gv.Properties.VariableNames;
+        
+        for iatt_drug = 1:length(labels_violin)
+            
+            mus = [gv.(labels_violin{iatt_drug}).mus];
+            s2s = [gv.(labels_violin{iatt_drug}).s2s];
+            
+            mus = mus(:);
+            s2s = s2s(:);
+            
+            % get binomial fit
+            rhat = nanmean([gv.(labels_violin{iatt_drug}).rhat]);
+            
+            gv_pop = GainVariability;
+            gv_pop.rhat = rhat;
+            m2v = gv_pop.pred_variance(xval_gain);
+            
+            % plot
+            %             h(iatt,idrug_in) = plot(mus,s2s,'.','Color',colors(iatt,idrug_in,:));
+            h(iatt,idrug_in) = scatter(mus,s2s,fSet.MarkerSize*3,colors_violin(iatt_drug,:),'filled','MarkerFaceAlpha',0.5);
+            %             h(iatt,idrug_in) = scatter(mus,s2s,fSet.MarkerSize*2,squeeze(colors(iatt,idrug_in,:))','filled');
+            plot(m2v.mean,m2v.variance,'Color',colors_violin(iatt_drug,:),'linew',fSet.LineWidth);
+            xlim([0.8 max(xval_gain)])
+            ylim([0.8 max(xval_gain)])
+            plot([1e-10 max(s2s)*1.1],[1e-10 max(s2s)*1.1],'k','linew',1)
+            set(gca,'xscale','log','yscale','log')
+        end
+        %         axis square
+        %     legend(h(:),labels(:),'Location','SouthEast','Fontsize',fSet.Fontsize_text)
+        
+        if idrug==length(label_drug)
+            xlabel('Mean (spikes)','FontSize',fSet.Fontsize_text)
+        end
+        if iunitc==1
+            ylabel({[label_drug{idrug} label_drug_ext{idrug}],'Variance (spikes^{2})'},'FontSize',fSet.Fontsize_text)
+        end
+        %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+        %%% violin
+        %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+        
+        % init axes
+        pos = get(h_ax, 'Position');
+        h_ax_inset = axes('Position', [pos(1)+0.22 pos(2)+0.03 0.16 0.15]) ; % inset
+        plotj_initAx(fSet);
+        hold on
+        
+        % unit selection
+        idx_unit = get_unit_selectivity(att_table, selectivity_criterium, {'drug',label_drug(idrug)});
+        idx_unit = idx_unit & att_table.unit_class==label_unitclass(iunitc);
+        
+        num_unit_plot = length(unique(att_table.unit(idx_unit)));
+        fprintf('\t Found %d units \n',  num_unit_plot)
+        
+        % extract smaller table
+        v_att_table = att_table(idx_unit, ismember(att_table.Properties.VariableNames, {'gain_log','drug_on','attention','unit','attention_drug_on'}));
+        
+        % plot violin
+        v = violinplot(v_att_table.gain_log, v_att_table.attention_drug_on, 'ShowMean', true);
+        XTickLabel = get(gca,'XTickLabel');
+        for iv = 1:length(v)
+            v(iv).ScatterPlot.SizeData = 10;
+            idx = strcmpi(XTickLabel(iv), labels_violin);
+            v(iv).ViolinColor = colors_violin(idx,:);
+        end
+        set(gca,'XTickLabel',[])
+        h_ax_inset.XAxis.Visible = 'off';
+        
+        % plot lines for each unit
+        [data_x, data_y] = deal(NaN(num_unit_plot, length(length(v))));
+        for iv = 1:length(v)
+            if ~any(isnan(v_att_table.gain_log))
+                % works if data is complete
+                data_x(:,iv) = v(iv).ScatterPlot.XData;
+                data_y(:,iv) = v(iv).ScatterPlot.YData;
+            else
+                % catch if nan values are present
+                idx = strcmpi(XTickLabel(iv), labels_violin);
+                
+                idx_trial = v_att_table.attention_drug_on==labels_violin{idx};
+                data_x(:,iv) = iv;
+                data_y(:,iv) = v_att_table.gain_log(idx_trial);
+            end
+        end
+        plot(data_x', data_y', 'Color', [0.5 0.5 0.5 0.3]);
+        
+        % fit model
+        lme_population = fitlme(v_att_table,['gain_log ~ 1 + attention*drug_on + (1|unit)'],'DummyVarCoding','effects'); % fit interaction model with effect coding
+        disp(lme_population.Coefficients)
+        
+        coefficients = lme_population.Coefficients;
+        
+        betas = coefficients.Estimate(2:end);
+        betas_se = coefficients.SE(2:end);
+        p_val = coefficients.pValue(2:end);
+        
+        %         p_string = get_significance_strings(p_val, 'rounded', 0);
+        p_string = get_significance_strings(p_val, 'rounded', 0, 'factorstring', {'drug','att',sprintf('att%sdrug', '\times')});
+        p_string{end+1} = ['n = ' num2str(num_unit_plot)];
+
+        % plot text
+        YLIM = get(gca,'ylim');
         set(gca, 'ylim', YLIM .* [1 1.25])
         
         tmp_x = get(gca,'xlim');
         tmp_y = get(gca,'ylim');
         
         x_pos = get_value_range(tmp_x, 0.95);
-        y_pos = get_value_range(tmp_y, 0.85);
+        y_pos = get_value_range(tmp_y, 1.3);
         
         h_text = text(x_pos, y_pos, p_string,'HorizontalAlignment','right');
         
-        if idrug==1
-            switch data2plot{idp}
-                case 'rate'
-                    ylabel('Firing rate (Hz)', 'FontSize', fSet.Fontsize_text)
-                case 'FF'
-                    ylabel('Fano Factor', 'FontSize', fSet.Fontsize_text)
-                case 'gain'
-                    ylabel('Gain variability', 'FontSize', fSet.Fontsize_text)
-            end
-        end
-%         set(gca,'XTickLabelRotation',-15)
+        ylabel('log(\sigma^{2}_G )', 'FontSize', fSet.Fontsize_text)
+        
+%         [p_fdr, p_masked] = FDR(p_val, 0.05);
+        [p_masked] = p_val<0.05;
+        p_masked = [p_masked ; false];
+        plotj_text_emphasise(h_text, 1, 'italic', p_masked);
+        plotj_text_emphasise(h_text, 1, 'bold', p_masked);
     end
 end
+
+savefigname = fullfile(path_population, sprintf('gain'));
+plotj_saveFig(savefigname, {'png', 'svg'})
+
+
 
 %% plot histogram cell-widths
 
@@ -750,7 +985,7 @@ end
 % data2plot = {'FF'};
 % data2plot = {'gain'};
 % data2plot = {'gain_log'};
-data2plot = {'rate','FF'};
+data2plot = {'rate','FF', 'gain_log'};
 [colors_violin, labels_violin, labels_violin_short] = get_colors('att_drug');
 colors_violin = reshape(colors_violin, [4,3]);
 labels_violin = reshape(labels_violin, [4,1]);
@@ -765,7 +1000,7 @@ iplot = 0;
 % idx_subplot = [1 2 ncol+1 ncol+2 3 4 ncol+3 ncol+4 5 6 ncol+5 ncol+6] ;
 idx_axlabel = [1 NaN nrow+1 NaN 2 NaN nrow+2 NaN 3 NaN nrow+3 NaN];
 
-[fH, fSet] = plotj_initFig('figNum', 3, 'width', 20, 'height', 10, 'Journal', plot_conventions);
+[fH, fSet] = plotj_initFig('figNum', 3, 'width', 20, 'height', 15, 'Journal', plot_conventions);
 % fSet.subplotMargin = [0.08, 0.05];
 fSet.subplotGap = [0.1, 0.06];
 
@@ -1105,6 +1340,250 @@ markerstyle = {'o','o'};
 
 idx_group = 1;
 
+ncol = length(label_drug) + 1;
+nrow = 1;
+
+[fH, fSet] = plotj_initFig('width', 26, 'height', 8, 'Journal',plot_conventions);
+fSet.subplotGap = fSet.subplotGap.*[1.2 .8];
+
+axislim = [0.25 0.9];
+[P, h_text] = deal( NaN(length(label_drug), 1) ); % drugtype
+[P_roc, h_text_roc] = deal( NaN(length(label_drug), 1) ); % drugtype
+iplot=0;
+
+% ROC plot
+iplot = iplot+1;
+
+% subplot axis
+h_ax_subplot = subtightplot(nrow, ncol, iplot, fSet.subplotGap, fSet.subplotMargin, fSet.subplotMargin);
+plotj_initAx(fSet, 'axlabel', idrug, 'axlabelDisplacement', [0.01, 0.02]);
+hold on
+
+for idrug = 1:length(label_drug)
+    % unit selection
+    idx_unit = get_unit_selectivity(att_table, selectivity_criterium, {'drug',label_drug(idrug)});
+    
+    % plot scatter on main axis
+    set(fH, 'currentaxes', h_ax_subplot);
+    
+    % get data - AUROC
+    idx_cond = att_table.attention=='Attend RF';
+    
+    idx = idx_unit & idx_cond;
+    tmp_data = zeros(length(find(idx))/2,1);
+    tmp_data(:,1) = att_table.roc(idx & att_table.drug_on=='Drug off');
+    tmp_data(:,2) = att_table.roc(idx & att_table.drug_on=='Drug on');
+    
+    plotj_scatter(tmp_data, ...
+        'markerStyle', markerstyle, 'MarkerSize', markersize, ...
+        'markerFaceColor', colors(idrug,:), 'markerFaceAlpha', 0.5, ...
+        'markerEdgeColor', colors(idrug,:), 'markerEdgeAlpha', 0.5, ...
+        'axislimit', axislim);
+    % stats
+    P(idrug) = compare_means(tmp_data(:,1),tmp_data(:,2), 1, 'rank');
+    
+    axis square
+    p_string = get_significance_strings(P(idrug), 'rounded', 0);
+    
+    % mean difference
+    delta_data = tmp_data(:,2)-tmp_data(:,1);
+    
+    % effect size
+    d = computeCohen_d(tmp_data(:,2), tmp_data(:,1), 'paired');
+
+    % print result
+    fprintf('%s: %s, delta-%s %1.2f +- %1.2f, %s, Cohens''s d = %1.2f\n', ...
+        'AUROC', ...
+        label_drug{idrug}, ...
+        'AUROC', ...
+        mean(delta_data), ...
+        std(delta_data)/sqrt(size(tmp_data,1)), ...
+        p_string, ...
+        d)
+
+    % set text
+    tmp_x = get(gca,'xlim');
+    tmp_y = get(gca,'ylim');
+    
+    x_pos = get_value_range(tmp_x, 0.05);
+    y_pos = get_value_range(tmp_y, 0.95 - 0.07 * (idrug-1));
+    
+    h_text(idrug) = text(x_pos, y_pos, ...
+        sprintf('%s: %s (n=%d)', label_drug{idrug}, p_string, size(tmp_data,1)), ...
+        'Color', colors(idrug,:), 'FontSize', fSet.Fontsize_ax);
+    
+    xlabel(h_ax_subplot, 'Attention AUROC no drug','FontSize', fSet.Fontsize_text)
+    if idrug==1
+        ylabel(h_ax_subplot, 'Attention AUROC drug','FontSize', fSet.Fontsize_text)
+    end
+end
+
+% FDR correction
+[p_fdr, p_masked] = FDR(P, 0.05);
+[p_fdr, p_masked_corr] = FDR(P_roc, 0.05);
+
+plotj_text_emphasise(h_text, p_masked, 'italic');
+plotj_text_emphasise(h_text, p_masked, 'bold');
+
+% -------------------------------------------------------------------------
+% drugMI/attAUROC against ejection current
+% -------------------------------------------------------------------------
+
+switch datatype
+    case 'MI'
+        v_drug_table = unstack(drug_table, 'MI', {'attention'}, 'GroupingVariables', {'unit','unit_class'}, 'VariableNamingRule', 'preserve');
+        data2plot = mean([v_drug_table.("Attend RF") v_drug_table.("Attend away")],2);
+        
+        iunitc=[];
+        
+        ylabel2use = 'Drug modulation index';
+        ylim2use = {[-0.5 0.5],[-0.4 0.2]};
+    case 'AUROC'
+        
+        % get data - AUROC
+        idx_cond = att_table.attention=='Attend RF';
+        
+        tmp_data = zeros(length(find(idx_cond))/2,1);
+        tmp_data(:,1) = att_table.roc(idx_cond & att_table.drug_on=='Drug off');
+        tmp_data(:,2) = att_table.roc(idx_cond & att_table.drug_on=='Drug on');
+        
+        data2plot = diff(tmp_data,1,2);
+
+        iunitc = [];
+        
+        ylabel2use = [plotj_symbol('Delta') ' attention AUROC'];
+        ylim2use = {[-0.25 0.3],[-0.25 0.3]};
+    case 'gain_log'
+        
+        
+        v_att_table = unstack(att_table, 'gain_log', {'attention_drug_on'}, 'GroupingVariables', {'unit','unit_class'}, 'VariableNamingRule', 'preserve');
+
+        % difference in attentional modulation of gain variabiliy
+        data2plot1 = (v_att_table.("Attend RF, Drug on") - v_att_table.("Attend away, Drug on")) ./ (v_att_table.("Attend RF, Drug on") + v_att_table.("Attend away, Drug on"));
+        data2plot2 = (v_att_table.("Attend RF, Drug off") - v_att_table.("Attend away, Drug off")) ./ (v_att_table.("Attend RF, Drug off") + v_att_table.("Attend away, Drug off"));
+        data2plot = data2plot1 - data2plot2;
+        iunitc=[];
+                
+end
+
+clear ax h
+for idrug = 1:length(label_drug)
+    clear text_legend
+    iplot=iplot+1;
+    
+    idx_unit = get_unit_selectivity(unitlist, selectivity_criterium, {'drug',label_drug(idrug)});
+    
+    ax(idrug) = subtightplot(nrow, ncol, iplot, fSet.subplotGap, fSet.subplotMargin, fSet.subplotMargin);
+    plotj_initAx(fSet, 'axlabel', iplot, 'axlabelDisplacement', [0.01, 0.02]);
+    hold on
+    
+    title([label_drug{idrug} label_drug_ext{idrug}], 'FontSize', fSet.Fontsize_title)
+        
+    % ejectionCurrent
+    xlabel_event = 'Ejection Current';
+    xlim2use = [17 90];
+    
+    tmp_data = [unitlist.EjectCurrent(idx_unit)  data2plot(idx_unit)];
+    hscat = plotj_scatter(tmp_data, ...
+        'markerStyle', markerstyle, 'markerSize', markersize, ...
+        'markerFaceColor', 'k', 'markerFaceAlpha', 0.5, ...
+        'axislimit', [], ...
+        'unityLine', 0);
+    text_legend{1} = ['(n=' num2str(length(find(idx_unit))) ')'];
+    
+    
+    data_table = table(unitlist.EjectCurrent_centered(idx_unit), data2plot(idx_unit), 'VariableNames', {'x', 'y'});
+    [stats2report, predict_data, stats, model] = fitlme_singleVar_sequential(data_table, 0);
+    
+    predict_data.x = predict_data.x + mean(unique(unitlist.EjectCurrent));
+    
+    switch datatype
+        case 'MI'
+            filename = fullfile(path_population, sprintf('doseResponse_drugMI_%s_%s.csv', label_drug{idrug}, selectivity_criterium));
+        case 'AUROC'
+            filename = fullfile(path_population, sprintf('doseResponse_attAUROC_%s_%s.csv', label_drug{idrug}, selectivity_criterium));
+        case 'gain_log'
+    end
+    writetable(data_table, filename)
+    
+%     fprintf('Chi(%d) %1.2f, p = %1.3f\n', stats2report.deltaDF, stats2report.LRStat, stats2report.pValue)
+    
+    if any(strcmp('fit_mean', predict_data.Properties.VariableNames))
+        h = plot(predict_data.x, predict_data.fit_mean, 'linewidth', fSet.LineWidth, 'color', [0.3 0.3 0.3]);
+        h = plot(predict_data.x, predict_data.fit_CI_low, '--', 'linewidth', fSet.LineWidth_in, 'Color', [0.3 0.3 0.3]);
+        h = plot(predict_data.x, predict_data.fit_CI_high, '--', 'linewidth', fSet.LineWidth_in, 'Color', [0.3 0.3 0.3]);
+        [pstring_chi,starstring] = get_significance_strings(stats2report.pValue, 'rounded', 0);
+        
+        cond1 = exist([filename(1:end-4) '_R.csv'], 'file');
+        cond2 = strcmpi(model,'quadratic');
+        if cond1 && cond2
+            utable = readtable([filename(1:end-4) '_R.csv']);
+            
+            if utable.usig==1
+                pstring_chi = [pstring_chi ' (U^{+})'];
+            else
+                pstring_chi = [pstring_chi ' (U^{-})'];
+            end
+        end
+        
+    else
+        pstring_chi = '';
+    end
+    
+    
+    switch model
+        case 'linear'
+            betaString = ['\beta' '_{1} = ' num2str(stats.Estimate, '%1.2e')];
+            %         model_color = colors(2,:);
+        case 'quadratic'
+            betaString = ['\beta' '_{2} = ' num2str(stats.Estimate, '%1.2e')];
+        otherwise
+            betaString = [];
+    end
+    
+    axis square
+    xlabel(xlabel_event, 'FontSize', fSet.Fontsize_text)
+    if idrug==1
+        ylabel(ylabel2use, 'FontSize', fSet.Fontsize_text)
+    end
+    
+    if ~isempty(ylim2use)
+        ylim(ylim2use{idrug})
+    end
+    if ~isempty(xlim2use)
+        xlim(xlim2use)
+    end
+
+    % set ax param
+    set(gca,'YDir','reverse')
+    
+    tmp_x = get(gca,'xlim');
+    tmp_y = get(gca,'ylim');
+    
+    x_pos = get_value_range(tmp_x, 0.05);
+    y_pos = get_value_range(tmp_y, 0.15);
+    
+    text(x_pos, y_pos, {betaString, pstring_chi, text_legend{1}}, 'fontsize', fSet.Fontsize_text, 'color', [0.3 0.3 0.3])
+    
+end
+
+savefigname = fullfile(path_population, sprintf('attAuroc_DrugResponseCurve'));
+plotj_saveFig(savefigname, {'png', 'svg'})
+
+
+%% Attend ROC, drug/no drug, resolved for narrow/broad. DrugMI-ejecCurrent
+
+% datatype for dose-response curve
+datatype = 'MI';
+% datatype = 'AUROC';
+% datatype = 'gain_log';
+
+colors = get_colors('spikewidth');
+markerstyle = {'o','o'};
+
+
+idx_group = 1;
+
 ncol = length(label_drug);
 nrow = 2;
 
@@ -1135,11 +1614,12 @@ for idrug = 1:length(label_drug)
     hold on
     
     % lme
-    for iunitc = 1:2
+    for iunitc = 1
         
         set(fH, 'currentaxes', h_ax_subplot);
         
-        unit2plot = idx_unit & att_table.unit_class==label_unitclass(iunitc);
+%         unit2plot = idx_unit & att_table.unit_class==label_unitclass(iunitc);
+        unit2plot = idx_unit;
         
         % get data - AUROC
         idx_cond = att_table.attention=='Attend RF';
@@ -1168,10 +1648,9 @@ for idrug = 1:length(label_drug)
         d = computeCohen_d(tmp_data(:,2), tmp_data(:,1), 'paired');
 
         % print result
-        fprintf('%s: %s, %s, delta-%s %1.2f +- %1.2f, %s, Cohens''s d = %1.2f\n', ...
+        fprintf('%s: %s, delta-%s %1.2f +- %1.2f, %s, Cohens''s d = %1.2f\n', ...
             'AUROC', ...
             label_drug{idrug}, ...
-            label_unitclass{iunitc}, ...
             'AUROC', ...
             mean(delta_data), ...
             std(delta_data)/sqrt(size(tmp_data,1)), ...
@@ -1186,7 +1665,7 @@ for idrug = 1:length(label_drug)
         y_pos = get_value_range(tmp_y, 0.95 - 0.07 * (iunitc-1));
         
         h_text(idrug,iunitc) = text(x_pos, y_pos, ...
-            sprintf('%s, %s (n=%d)', p_string, label_unitclass{iunitc}, size(tmp_data,1)), ...
+            sprintf('%s (n=%d)', p_string, size(tmp_data,1)), ...
             'Color', colors(iunitc,:), 'FontSize', fSet.Fontsize_ax);
         
         % inset
@@ -1220,10 +1699,9 @@ for idrug = 1:length(label_drug)
         d = computeCohen_d(tmp_data(:,2), tmp_data(:,1), 'paired');
         
         % print result
-        fprintf('%s: %s, %s, delta-%s %1.2f +- %1.2f, %s, Cohens''s d = %1.2f\n', ...
+        fprintf('%s: %s, delta-%s %1.2f +- %1.2f, %s, Cohens''s d = %1.2f\n', ...
             'AUROC-CORRECT', ...
             label_drug{idrug}, ...
-            label_unitclass{iunitc}, ...
             'AUROC', ...
             mean(delta_data), ...
             std(delta_data)/sqrt(size(tmp_data,1)), ...
@@ -1241,7 +1719,7 @@ for idrug = 1:length(label_drug)
             'FontSize', fSet.Fontsize_ax);
     end
     
-    set(h_ax_inset, 'XTick', [1 2], 'XTickLabel', label_unitclass)
+    set(h_ax_inset, 'XTick', [1 2])
 %     ylabel(h_ax_inset, [plotj_symbol('Delta') ' | AUROC-0.5 |'],'FontSize', fSet.Fontsize_text)
     ylabel(h_ax_inset, [plotj_symbol('Delta') ' AUROC-c'],'FontSize', fSet.Fontsize_text)
 
@@ -1815,20 +2293,20 @@ plotj_saveFig(savefigname, {'png', 'svg'})
 mfactor = 1000; %multiplication_factor
 colors = get_colors('att_drug');
 
-ncol = length(label_drug);
-nrow = 1;
+ncol = 1;
+nrow = length(label_drug);
 
 ylim2plot = [250 550];
 
-[fH, fSet] = plotj_initFig('width', 20, 'height', 8, 'Journal',plot_conventions);
+[fH, fSet] = plotj_initFig('width', 10, 'height', 12, 'Journal',plot_conventions);
 
 clear legendText h
-for idrug = 1:ncol
+for idrug = 1:length(label_drug)
     
     idx_rec = strcmpi(recordinglist.Drug, label_drug(idrug));
     %
     subtightplot(nrow, ncol, idrug, fSet.subplotGap, fSet.subplotMargin, fSet.subplotMargin)
-    plotj_initAx(fSet, 'axlabel', idrug, 'axlabelDisplacement', [0.07, 0.01]);
+    plotj_initAx(fSet, 'axlabel', idrug + 1, 'axlabelDisplacement', [0.07, 0.01]);
     hold on
     
     title([label_drug{idrug} label_drug_ext{idrug}], 'FontSize', fSet.Fontsize_title)
@@ -1893,13 +2371,15 @@ for idrug = 1:ncol
     y_pos = get_value_range(tmp_y, 0.85);
 
     text(x_pos, y_pos, pstring, 'FontSize', fSet.Fontsize_text)
-    
     if idrug==1
         ylabel('Reaction time (ms)', 'FontSize', fSet.Fontsize_text)
     end
     
-    set(gca, 'xticklabelRotation', -25)
-    
+    if idrug == length(label_drug)
+        set(gca, 'xticklabelRotation', 25)
+    else
+        set(gca, 'xticklabel', '')
+    end
 end
 
 
