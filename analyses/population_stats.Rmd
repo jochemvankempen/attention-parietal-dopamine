@@ -45,7 +45,7 @@ print(params)
 ## set files and directories
 ```{r pressure, echo=FALSE}
 # add function from https://journals.sagepub.com/doi/10.1177/0149206314560412
-setwd('M:/Jochem/papers/2021-DA-LIP/repositories/attention-parietal-dopamine/analyses/')
+setwd('C:/Jochem/repositories/attention-parietal-dopamine/analyses/')
 
 source("./external/R2tobf.R")
 
