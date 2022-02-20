@@ -1,10 +1,7 @@
 # Run the population_stats.Rmd, multiple times with different parameters
 
-#Sys.setenv(RSTUDIO_PANDOC="C:/Program Files/RStudio/bin/pandoc")
-#setwd('C:/Jochem/repositories/attention-parietal-dopamine/analyses/')
-
-setwd('/Users/jochemvankempen/repositories/attention-parietal-dopamine/analyses/')
-
+Sys.setenv(RSTUDIO_PANDOC="C:/Program Files/RStudio/bin/pandoc")
+setwd('//campus/rdw/ion08/08/Jochem/papers/2021-DA-LIP/repositories/attention-parietal-dopamine/analyses/')
 
 # parameter definition
 drugnames = c('Dopamine','SCH23390') #
@@ -19,9 +16,9 @@ render_main <- function(drugname,dependent_variable) {
     rmarkdown::render,
     list(input="population_stats.Rmd",
          output_format = "github_document",
-         output_file = paste0('../results/','population_stats','-',drugname,'-',dependent_variable,'.md'),    
-         params = list("drugname"=drugname, "dependent_variable"=dependent_variable)
-         #envir = new.env()
+         output_file = paste0('H:/documents/','population_stats','-',drugname,'-',dependent_variable,'.md'),    
+         params = list("drugname"=drugname, "dependent_variable"=dependent_variable),
+         envir = new.env()
          )
     )
 }

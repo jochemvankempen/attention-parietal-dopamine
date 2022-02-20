@@ -23,11 +23,11 @@ Dopamine influences attentional rate modulation in Macaque posterior parietal co
 
 Jochem van Kempen, Christian Brandt, Claudia Distler, Mark A. Bellgrove, Alexander Thiele
 
-Application of mixed effect models to test the relationship between attention, drug application and unit type on firing rates, fano factors (FF) and gain variability during application of the general dopaminergic agonist dopamine and the D1-specific antagonist SCH23390.
+Application of mixed effect models to test the relationship between attention and drug application on firing rates, fano factors (FF) and gain variability during application of the general dopaminergic agonist dopamine and the D1-specific antagonist SCH23390.
 
 ## Packages
 ```{r packages, message=FALSE, warning=FALSE, results='hide'}
-x<-c("tidyverse","dplyr","lme4","lmerTest","MASS","pbkrtest","parallel","MuMIn","varhandle")
+x<-c("tidyverse","dplyr","lme4","lmerTest","MASS","pbkrtest","parallel","MuMIn","varhandle","BayesFactor","caTools")
 lapply(x, function(x) {if (!require(x, character.only=T)) {install.packages(x);require(x)}})
 
 # # remove unnecessary variables
@@ -45,13 +45,11 @@ print(params)
 ## set files and directories
 ```{r pressure, echo=FALSE}
 # add function from https://journals.sagepub.com/doi/10.1177/0149206314560412
-#setwd('C:/Jochem/repositories/attention-parietal-dopamine/analyses/')
-setwd('/Users/jochemvankempen/repositories/attention-parietal-dopamine/analyses/')
+setwd('M:/Jochem/papers/2021-DA-LIP/repositories/attention-parietal-dopamine/analyses/')
 
 source("./external/R2tobf.R")
 
-#filedir = str_c('C:/Jochem/Gratc_PPC_DA_new/data/population/')
-filedir = str_c('/Users/jochemvankempen/NCL/gratc_DA/population/')
+filedir = str_c('M:/Jochem/papers/2021-DA-LIP/data/population/')
 filename = paste('population_attention_',selectivity_criterium, sep="")
 ```
 
