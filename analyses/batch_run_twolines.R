@@ -8,7 +8,7 @@ lapply(x, function(x) {if (!require(x, character.only=T)) {install.packages(x);r
 rm(list=ls(all=TRUE)) 
 
 # set working directory
-setwd('M:/Jochem/papers/2021-DA-LIP/')
+setwd('<YOUR_LOCAL_PATH>/Thiele-attention-gratc-LIP-pipette/')
 
 # load functions ---------------------------------------------------
 source(str_c(getwd(),'/repositories/attention-parietal-dopamine/analyses/external/','twolines.R'))

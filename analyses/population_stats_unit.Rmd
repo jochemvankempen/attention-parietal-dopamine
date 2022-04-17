@@ -45,10 +45,10 @@ print(params)
 ## set files and directories
 ```{r pressure, echo=FALSE}
 # add function from https://journals.sagepub.com/doi/10.1177/0149206314560412
-setwd('C:/Jochem/repositories/attention-parietal-dopamine/analyses/')
+setwd('<YOUR_LOCAL_PATH>/Thiele-attention-gratc-LIP-pipette/repositories/attention-parietal-dopamine/analyses/')
 source("./external/R2tobf.R")
 
-filedir = str_c('C:/Jochem/Gratc_PPC_DA_new/data/population/')
+filedir = str_c('<YOUR_LOCAL_PATH>/Thiele-attention-gratc-LIP-pipette/data/population/')
 filename = paste('population_attention_',selectivity_criterium, sep="")
 ```
 
