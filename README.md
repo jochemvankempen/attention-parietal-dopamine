@@ -17,7 +17,7 @@ If you would like to run the analyses on the provided data, I recommend setting 
 This leads to the following data/code folder organisation:
 
 ```
-Thiele_attention_gratc_V1_V4_laminar 
+Thiele-attention-gratc-LIP-pipette 
 │   LICENCE.txt 
 │   README.md 
 │   datacite.yml 
