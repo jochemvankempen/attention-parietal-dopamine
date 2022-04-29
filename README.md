@@ -41,7 +41,7 @@ Code can be found in the folder `./analyses/`.
 - The results from these analyses are compiled into population data tables, further analysed and plotted in MATLAB in `batch_population.mlx`.
 - Population statistics are conducted and reported on in R markdown language in `population_stats.Rmd`. This script produces a report (html and md) for one combination of parameters (Drug and type of neural activity). In the script `batch_population_stats.R`, we loop over different parameters. The resulting reports are stored in `./results/`. 
 
-Note that you need to replace "<YOUR_LOCAL_PATH>" in the `R` and `Rmd` scripts as well as `batch_population.mlx` with the parent directory that contains `Thiele_attention_gratc_V1_V4_laminar`. 
+Note that you need to replace "<YOUR_LOCAL_PATH>" in the `R` and `Rmd` scripts as well as `batch_population.mlx` with the parent directory that contains `Thiele-attention-gratc-LIP-pipette`. 
 
 ## Licence
 This program is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation; either version 3 of the License, or (at your option) any later version.
